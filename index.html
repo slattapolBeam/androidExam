@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coding Quiz System</title>
+    <!-- ใช้ฟอนต์ Prompt ให้ดูคลีนและทันสมัย -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- นำเข้า Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Prompt', 'sans-serif'] },
+                    colors: {
+                        apple: {
+                            bg: '#F5F5F7',
+                            card: '#FFFFFF',
+                            text: '#1D1D1F',
+                            blue: '#0071E3',
+                            blueHover: '#0077ED',
+                            dark: '#1D1D1F'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- โหลด Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* CSS เพิ่มเติมเล็กน้อยสำหรับส่วนที่ Tailwind ครอบคลุมไม่ถึงในช่องพิมพ์โค้ด */
+        body { -webkit-font-smoothing: antialiased; }
+        .noselect { user-select: none; -webkit-user-select: none; }
+        
+        /* ตกแต่งช่องเติมคำในโค้ดให้เข้ากับ Dark Mode ของ Code Block */
+        .code-input {
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            padding: 4px 8px;
+            border: 1px solid #424245;
+            border-radius: 8px;
+            outline: none;
+            background: #2D2D2F;
+            color: #50FA7B;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .code-input:focus { border-color: #0071E3; background: #1D1D1F; box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3); }
+        .hint-btn {
+            background: transparent;
+            color: #86868B;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 6px;
+            transition: transform 0.2s;
+        }
+        .hint-btn:hover { transform: scale(1.1); color: #F5C518; }
+        .hint-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    </style>
+</head>
+<body class="bg-apple-bg text-apple-text font-sans flex flex-col items-center p-6 min-h-screen noselect transition-all duration-500">
+
+<div class="w-full max-w-4xl mt-10">
+    
+    <!-- Header -->
+    <div id="main-header" class="text-center mb-10">
+        <h1 class="text-4xl font-semibold tracking-tight mb-3 text-apple-dark">Coding Quiz</h1>
+        <p class="text-[#86868B] text-lg font-light">กรุณาเข้าสู่ระบบด้วยรหัสนักศึกษา</p>
+    </div>
+
+    <div id="result-section" class="bg-apple-card rounded-[32px] p-12 shadow-[0_20px_40px_rgb(0,0,0,0.08)] mb-6 text-center hidden border border-gray-100 max-w-xl mx-auto">
+        
+        <div id="result-icon-container" class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 transition-colors duration-500">
+            <span id="result-emoji" class="text-4xl">🤔</span>
+        </div>
+        
+        <h2 id="result-heading" class="text-3xl font-semibold mb-2 text-apple-dark">กำลังประมวลผล...</h2>
+        
+        <div class="inline-block px-8 pb-4 mb-6 border-b border-gray-100">
+            <p id="result-student-info" class="text-lg font-medium text-apple-blue"></p>
+        </div>
+        
+        <div id="score-display" class="text-8xl font-bold text-apple-dark mb-6 tracking-tighter">0/10</div>
+        
+        <div class="bg-apple-bg rounded-2xl p-5">
+            <p id="feedback-text" class="text-apple-dark font-medium"></p>
+        </div>
+    </div>
+
+    <!-- Section: Login -->
+    <div id="login-section" class="bg-apple-card rounded-[28px] p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6 max-w-md mx-auto w-full border border-gray-100">
+        <input type="text" id="studentId" 
+            class="w-full p-4 text-lg rounded-2xl bg-apple-bg border-2 border-transparent text-center mb-6 focus:outline-none focus:border-apple-blue focus:bg-white transition-all duration-300" 
+            placeholder="รหัสนักศึกษา (เช่น 660001)" autocomplete="off">
+        
+        <button id="btnLogin" onclick="login()" 
+            class="w-full bg-apple-blue hover:bg-apple-blueHover text-white font-medium py-4 px-6 rounded-full transition-all duration-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            เริ่มต้นทำข้อสอบ
+        </button>
+        <p id="login-error" class="text-[#FF3B30] text-center mt-5 hidden text-sm font-medium"></p>
+    </div>
+
+    <!-- Section: Quiz -->
+    <div id="quiz-section" class="hidden animate-fade-in-up">
+        
+        <!-- Status Bar -->
+        <div class="flex flex-col sm:flex-row justify-between items-center bg-white p-5 rounded-3xl mb-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-50 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">🧑‍💻</div>
+                <span id="student-info" class="text-apple-dark font-medium">-</span>
+            </div>
+            <div class="bg-[#FFF5E5] px-5 py-2 rounded-full text-[#FF9500] font-medium text-sm flex items-center gap-2 shadow-sm">
+                <span>💡 Hint Tokens:</span>
+                <span id="hint-count" class="font-bold text-lg">3</span>
+            </div>
+        </div>
+        
+        <!-- Anti-Cheat Warning -->
+        <p class="text-[#86868B] text-xs text-center mb-4">⚠️ ระบบป้องกันการทุจริตกำลังทำงาน ห้ามคลิกขวาหรือคัดลอกข้อความ</p>
+        
+        <!-- Code Block (คล้ายโทนของ Xcode แบบ Dark Mode) -->
+        <div class="bg-apple-dark rounded-[28px] p-8 shadow-2xl shadow-gray-300/50 mb-8 border border-gray-800">
+            <pre class="overflow-x-auto text-[#F5F5F7] font-mono text-[15px] leading-loose tracking-wide"><code id="code-content"></code></pre>
+        </div>
+        
+        <!-- Submit Button -->
+        <div class="text-center mb-10">
+            <button id="btnSubmit" onclick="submitQuiz()" 
+                class="bg-apple-dark hover:bg-black text-white font-medium py-4 px-12 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 text-lg">
+                ส่งคำตอบ
+            </button>
+        </div>
+    </div>
+
+    <!-- Section: Result -->
+    <div id="result-section" class="bg-apple-card rounded-[32px] p-12 shadow-[0_20px_40px_rgb(0,0,0,0.08)] mb-6 text-center hidden border border-gray-100 max-w-xl mx-auto">
+        <div class="w-20 h-20 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-6">
+            <span class="text-4xl">🎉</span>
+        </div>
+        <h2 class="text-2xl font-semibold mb-2 text-apple-dark">บันทึกผลคะแนนสำเร็จ</h2>
+        <p class="text-[#86868B] mb-8">ข้อมูลของคุณถูกส่งเข้าสู่ระบบแล้ว</p>
+        
+        <div id="score-display" class="text-7xl font-bold text-apple-blue mb-6 tracking-tighter">0 / 10</div>
+        
+        <div class="bg-apple-bg rounded-2xl p-4">
+            <p id="feedback-text" class="text-apple-text font-medium"></p>
+        </div>
+    </div>
+
+</div>
+
+<!-- โค้ด <script> สำหรับฟังก์ชัน JavaScript คงไว้ตามเดิม -->
+<script>
+    // ==========================================
+    // 1. ตั้งค่า Supabase 
+    // ==========================================
+    const SUPABASE_URL = 'https://oqbvojrpwwhrotbimfwz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_zQZzYaPPmEmgAOxha5PJOQ_iK_OYGVZ';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ==========================================
+    // 2. ตัวแปรและโจทย์ 4 ชุด
+    // ==========================================
+    let currentStudent = null;
+    let currentExamSet = null;
+    let tokens = 3;
+    let usedHints = 0;
+
+    const hintDictionary = {
+        set_1: ['fi', 'va', 'se', 'te', 'is', 'to', '+=', 'if', 'fo', 'te'],
+        set_2: ['se', 'Do', 'tr', 're', '!=', 'is', 'el', 'te', '0.', 'te'],
+        set_3: ['Bu', 'Ed', 'se', 'tr', 're', 'to', '+=', 'te', 'fo', 'cl'],
+        set_4: ['R.', 'Bu', 'va', 'to', 'is', 'nu', 'to', 'el', '0.', 'te']
+    };
+
+    const quizSets = {
+        set_1: `//
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val etAmount = <input type="text" class="code-input ans-input" style="width: 140px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>&lt;EditText&gt;(R.id.etAmount)
+        <input type="text" class="code-input ans-input" style="width: 60px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button> total: Double = 0.0
+
+        btnAdd.<input type="text" class="code-input ans-input" style="width: 180px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> {
+            val amountText = etAmount.<input type="text" class="code-input ans-input" style="width: 140px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>().trim()
+            if (amountText.<input type="text" class="code-input ans-input" style="width: 100px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>()) return@setOnClickListener 
+
+            val amount = amountText.<input type="text" class="code-input ans-input" style="width: 150px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()
+            if (amount != null) {
+                total <input type="text" class="code-input ans-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> amount
+                val showNote = <input type="text" class="code-input ans-input" style="width: 50px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> (noteText.isNotEmpty()) noteText else "ไม่ระบุ"
+                tvTotal.text = "ยอดรวม: %.2f".<input type="text" class="code-input ans-input" style="width: 80px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>(total)
+                etAmount.<input type="text" class="code-input ans-input" style="width: 110px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+            }
+        }
+    }`,
+        set_2: `//
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        <input type="text" class="code-input ans-input" style="width: 150px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>(R.layout.activity_main)
+
+        var total: <input type="text" class="code-input ans-input" style="width: 90px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button> = 0.0
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.toString().<input type="text" class="code-input ans-input" style="width: 80px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button>()
+            if (amountText.isEmpty()) {
+                <input type="text" class="code-input ans-input" style="width: 220px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>
+            }
+
+            val amount = amountText.toDoubleOrNull()
+            if (amount <input type="text" class="code-input ans-input" style="width: 80px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>) {
+                total += amount
+                val showNote = if (noteText.<input type="text" class="code-input ans-input" style="width: 120px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()) noteText <input type="text" class="code-input ans-input" style="width: 60px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> "ไม่ระบุ"
+                tvTotal.<input type="text" class="code-input ans-input" style="width: 70px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> = "ยอดรวม: %.2f".format(total)
+            }
+        }
+        btnClear.setOnClickListener {
+            total = <input type="text" class="code-input ans-input" style="width: 60px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+            etAmount.<input type="text" class="code-input ans-input" style="width: 120px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+        }
+    }`,
+        set_3: `//
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: <input type="text" class="code-input ans-input" style="width: 80px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val etAmount = findViewById&lt;<input type="text" class="code-input ans-input" style="width: 100px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.etAmount)
+        var total: Double = 0.0
+
+        btnClear.<input type="text" class="code-input ans-input" style="width: 180px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> {
+            total = 0.0
+            etAmount.text.clear()
+        }
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.toString().<input type="text" class="code-input ans-input" style="width: 80px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>()
+            if (amountText.isEmpty()) <input type="text" class="code-input ans-input" style="width: 220px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>
+
+            val amount = amountText.<input type="text" class="code-input ans-input" style="width: 150px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()
+            if (amount != null) {
+                total <input type="text" class="code-input ans-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> amount
+                tvLastItem.<input type="text" class="code-input ans-input" style="width: 70px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> = "รายการล่าสุด: %.2f".<input type="text" class="code-input ans-input" style="width: 80px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>(amount)
+                etAmount.text.<input type="text" class="code-input ans-input" style="width: 80px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+            }
+        }
+    }`,
+        set_4: `//
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(<input type="text" class="code-input ans-input" style="width: 100px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>.activity_main)
+
+        val btnAdd = findViewById&lt;<input type="text" class="code-input ans-input" style="width: 80px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.btnAdd)
+        <input type="text" class="code-input ans-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> total: Double = 0.0
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.<input type="text" class="code-input ans-input" style="width: 100px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>().trim()
+            if (amountText.<input type="text" class="code-input ans-input" style="width: 100px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>()) return@setOnClickListener 
+
+            val amount = amountText.toDoubleOrNull()
+            if (amount == <input type="text" class="code-input ans-input" style="width: 60px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>) return@setOnClickListener
+            
+            <input type="text" class="code-input ans-input" style="width: 70px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> += amount
+            val showNote = if (noteText.isNotEmpty()) noteText <input type="text" class="code-input ans-input" style="width: 60px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> "ไม่ระบุ"
+            
+            tvTotal.text = "ยอดรวมวันนี้: %.2f บาท".format(total)
+        }
+        btnClear.setOnClickListener {
+            total = <input type="text" class="code-input ans-input" style="width: 60px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+            etAmount.<input type="text" class="code-input ans-input" style="width: 120px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+        }
+    }`
+    };
+
+    // ==========================================
+    // 3. ฟังก์ชันระบบ (Login, Hint, Submit)
+    // ==========================================
+    async function login() {
+        const studentId = document.getElementById('studentId').value.trim();
+        const errorText = document.getElementById('login-error');
+        const btn = document.getElementById('btnLogin');
+        
+        if (!studentId) {
+            errorText.innerText = "⚠️ กรุณากรอกรหัสนักศึกษา";
+            errorText.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "กำลังตรวจสอบ...";
+        errorText.style.display = 'none';
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('students')
+                .select('*')
+                .eq('student_id', studentId)
+                .maybeSingle(); 
+
+            if (error) {
+                errorText.innerHTML = `❌ <b>Database Error:</b><br>Code: ${error.code}<br>Message: ${error.message}`;
+                errorText.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "เข้าสู่ระบบและเริ่มทำข้อสอบ";
+                return;
+            }
+
+            if (!data) {
+                errorText.innerText = "❌ ไม่พบรหัสนักศึกษานี้ในระบบ";
+                errorText.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "เข้าสู่ระบบและเริ่มทำข้อสอบ";
+                return;
+            }
+
+            const { data: existingResult, error: resultError } = await supabaseClient
+                .from('exam_results')
+                .select('id')
+                .eq('student_id', studentId);
+                
+            if (resultError) {
+                errorText.innerHTML = `❌ <b>Result Check Error:</b><br>Code: ${resultError.code}<br>Message: ${resultError.message}`;
+                errorText.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "เข้าสู่ระบบและเริ่มทำข้อสอบ";
+                return;
+            }
+                
+            if (existingResult && existingResult.length > 0) {
+                errorText.innerText = "⚠️ รหัสนักศึกษานี้ได้ทำการสอบไปแล้ว";
+                errorText.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "เข้าสู่ระบบและเริ่มทำข้อสอบ";
+                return;
+            }
+
+            currentStudent = data;
+            const modulo = parseInt(studentId) % 4;
+            
+            if (modulo === 1) currentExamSet = 'set_1';
+            else if (modulo === 2) currentExamSet = 'set_2';
+            else if (modulo === 3) currentExamSet = 'set_3';
+            else currentExamSet = 'set_4'; 
+
+            document.getElementById('student-info').innerText = `🧑‍💻 ${data.first_name} ${data.last_name}`;
+            document.getElementById('code-content').innerHTML = quizSets[currentExamSet];
+            
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('quiz-section').style.display = 'block';
+
+            document.getElementById('main-header').style.display = 'none';
+            document.getElementById('quiz-section').style.display = 'block';
+        } catch (e) {
+            errorText.innerHTML = `❌ <b>System Error:</b> ${e.message}`;
+            errorText.style.display = 'block';
+            console.error("System Error:", e);
+            btn.disabled = false;
+            btn.innerText = "เข้าสู่ระบบและเริ่มทำข้อสอบ";
+        }
+    }
+
+    function useHint(questionIndex) {
+        if (tokens > 0) {
+            const inputField = document.getElementById(`q${questionIndex}`);
+            if (inputField.value !== "") return; 
+            
+            tokens--;
+            usedHints++;
+            document.getElementById('hint-count').innerText = tokens;
+            
+            const hintText = hintDictionary[currentExamSet][questionIndex];
+            inputField.value = hintText;
+            
+            const btn = inputField.nextElementSibling;
+            if (btn && btn.classList.contains('hint-btn')) {
+                btn.style.background = '#444';
+                btn.disabled = true;
+            }
+
+            if(tokens === 0) {
+                document.querySelectorAll('.hint-btn').forEach(b => b.disabled = true);
+            }
+        }
+    }
+
+    async function submitQuiz() {
+        if (!confirm("คุณแน่ใจหรือไม่ที่จะส่งคำตอบ?")) return;
+
+        const btn = document.getElementById('btnSubmit');
+        btn.disabled = true;
+        btn.innerText = "กำลังตรวจข้อสอบ...";
+
+        const answers = [];
+        for (let i = 0; i < 10; i++) {
+            answers.push(document.getElementById(`q${i}`).value.trim());
+        }
+
+        const { data: score, error } = await supabaseClient
+            .rpc('submit_exam', {
+                p_student_id: currentStudent.student_id,
+                p_exam_set: currentExamSet,
+                p_answers: answers,
+                p_hints_used: usedHints
+            });
+
+        if (error) {
+            alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาแจ้งผู้สอน");
+            btn.disabled = false;
+            btn.innerText = "✅ ส่งคำตอบ";
+            console.error(error);
+            return;
+        }
+        
+
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('score-display').innerText = `${score} / 10`;
+
+        if (error) {
+            alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาแจ้งผู้สอน");
+            btn.disabled = false;
+            btn.innerText = "✅ ส่งคำตอบ";
+            console.error(error);
+            return;
+        }
+
+        // แสดงผลหน้าต่างคะแนน
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('result-section').style.display = 'block';
+        
+        // ใส่ชื่อ-สกุล และเลขที่
+        document.getElementById('result-student-info').innerText = `🧑‍🎓 ${currentStudent.first_name} ${currentStudent.last_name} (เลขที่ ${currentStudent.class_number})`;
+        document.getElementById('score-display').innerText = `${score}`;
+
+        // ระบบเปลี่ยนอารมณ์อิโมจิและข้อความตามคะแนน
+        const emojiEl = document.getElementById('result-emoji');
+        const iconContainer = document.getElementById('result-icon-container');
+        const headingEl = document.getElementById('result-heading');
+        const feedbackEl = document.getElementById('feedback-text');
+
+        if (score >= 8) {
+            emojiEl.innerText = "🎉";
+            iconContainer.className = "w-20 h-20 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-6";
+            headingEl.innerText = "ยอดเยี่ยมมาก!";
+            headingEl.style.color = "#34C759"; // สีเขียว
+            feedbackEl.innerText = "เข้าใจโครงสร้างโค้ดแบบทะลุปรุโปร่ง สมกับเป็นเด็กอีเทคเลยครับ!";
+        } else if (score >= 5) {
+            emojiEl.innerText = "👍";
+            iconContainer.className = "w-20 h-20 bg-[#E5F0FF] rounded-full flex items-center justify-center mx-auto mb-6";
+            headingEl.innerText = "ผ่านเกณฑ์!";
+            headingEl.style.color = "#0071E3"; // สีฟ้า
+            feedbackEl.innerText = "ทำได้ดีครับ แต่อาจจะต้องเก็บรายละเอียดอีกนิดนึงนะ";
+        } else if (score > 0) {
+            emojiEl.innerText = "✌️";
+            iconContainer.className = "w-20 h-20 bg-[#FFF5E5] rounded-full flex items-center justify-center mx-auto mb-6";
+            headingEl.innerText = "เกือบแล้ว!";
+            headingEl.style.color = "#FF9500"; // สีส้ม
+            feedbackEl.innerText = "ต้องกลับไปทบทวนเรื่องตัวแปรและการเรียกใช้ฟังก์ชันอีกรอบนะ สู้ๆ!";
+        } else {
+            emojiEl.innerText = "😭";
+            iconContainer.className = "w-20 h-20 bg-[#FFECEB] rounded-full flex items-center justify-center mx-auto mb-6";
+            headingEl.innerText = "แง๊! ได้ 0 คะแนน";
+            headingEl.style.color = "#FF3B30"; // สีแดง
+            feedbackEl.innerText = "ไม่เป็นไรครับ ล้มแล้วลุกใหม่ กลับไปอ่านโค้ด ExpenseNote อีกรอบแล้วมาลุยกันใหม่นะ!";
+        }
+    }
+
+    // ==========================================
+    // 4. ระบบป้องกันการทุจริต (ปิดไว้ก่อนชั่วคราว)
+    // ==========================================
+     document.addEventListener('contextmenu', event => event.preventDefault());
+     document.addEventListener('keydown', function(e) {
+         if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) e.preventDefault();
+     });
+     document.addEventListener('paste', function(e) {
+         if(e.target.classList.contains('ans-input')) {
+             e.preventDefault();
+             alert('⚠️ ไม่อนุญาตให้คัดลอกวาง กรุณาพิมพ์โค้ดด้วยตนเอง');
+         }
+     });
+</script>
+
+</body>
+</html>
