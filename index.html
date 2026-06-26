@@ -176,35 +176,41 @@
     let usedHints = 0;
 
     const hintDictionary = {
-        set_1: ['fi', 'va', 'se', 'te', 'is', 'to', '+=', 'if', 'fo', 'te'],
+        set_1: ['Ap', 'Te', 'va', 'te', 'To', 'to', '+=', 'is', 'fo', 'cl'],
         set_2: ['se', 'Do', 'tr', 're', '!=', 'is', 'el', 'te', '0.', 'te'],
         set_3: ['Bu', 'Ed', 'se', 'tr', 're', 'to', '+=', 'te', 'fo', 'cl'],
         set_4: ['R.', 'Bu', 'va', 'to', 'is', 'nu', 'to', 'el', '0.', 'te']
     };
 
     const quizSets = {
-        set_1: `//
-class MainActivity : AppCompatActivity() {
+        set_1: `// ชุดที่ 1 (อัปเดตใหม่ กันข้อสอบรั่ว!)
+class MainActivity : <input type="text" class="code-input ans-input" style="width: 150px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val etAmount = <input type="text" class="code-input ans-input" style="width: 140px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>&lt;EditText&gt;(R.id.etAmount)
-        <input type="text" class="code-input ans-input" style="width: 60px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button> total: Double = 0.0
+        val tvTotal = findViewById&lt;<input type="text" class="code-input ans-input" style="width: 100px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.tvTotal)
+        <input type="text" class="code-input ans-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> total: Double = 0.0
 
-        btnAdd.<input type="text" class="code-input ans-input" style="width: 180px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> {
-            val amountText = etAmount.<input type="text" class="code-input ans-input" style="width: 140px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>().trim()
-            if (amountText.<input type="text" class="code-input ans-input" style="width: 100px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>()) return@setOnClickListener 
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.<input type="text" class="code-input ans-input" style="width: 60px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>.toString().trim()
+            
+            if (amountText.isEmpty()) {
+                <input type="text" class="code-input ans-input" style="width: 80px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>.makeText(this, "ว่าง", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener 
+            }
 
             val amount = amountText.<input type="text" class="code-input ans-input" style="width: 150px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()
             if (amount != null) {
                 total <input type="text" class="code-input ans-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> amount
-                val showNote = <input type="text" class="code-input ans-input" style="width: 50px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> (noteText.isNotEmpty()) noteText else "ไม่ระบุ"
+                val showNote = if (noteText.<input type="text" class="code-input ans-input" style="width: 120px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>()) noteText else "ไม่ระบุ"
+                
                 tvTotal.text = "ยอดรวม: %.2f".<input type="text" class="code-input ans-input" style="width: 80px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>(total)
-                etAmount.<input type="text" class="code-input ans-input" style="width: 110px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+                etAmount.text.<input type="text" class="code-input ans-input" style="width: 80px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
             }
         }
-    }`,
+    }
+}`,
         set_2: `//
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
