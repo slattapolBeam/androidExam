@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ห้องสอบ - Coding Quiz Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Prompt', 'Inter', sans-serif; background-color: #F5F5F7; color: #1D1D1F; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        
+        .code-block { font-family: 'Courier New', Courier, monospace; background-color: #1E1E1E; color: #D4D4D4; padding: 1.5rem; border-radius: 0.75rem; overflow-x: auto; white-space: pre; line-height: 1.8; }
+        .code-input { background-color: #2D2D2D; border: 1px solid #404040; color: #569CD6; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-family: 'Courier New', monospace; outline: none; transition: all 0.2s; text-align: center; }
+        .code-input:focus { border-color: #0071E3; box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.3); }
+        .code-input:disabled { opacity: 0.9; cursor: not-allowed; }
+        
+        .hint-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; margin-left: 4px; opacity: 0.7; transition: all 0.2s; filter: grayscale(20%); }
+        .hint-btn:hover { opacity: 1; transform: scale(1.15) translateY(-2px); filter: grayscale(0%); }
+        .super-btn { font-size: 1.2rem; filter: drop-shadow(0 0 2px rgba(250,204,21,0.5)); }
+        
+        .timer-warning { animation: pulse-red 1s infinite; font-weight: bold; }
+        @keyframes pulse-red { 0%, 100% { color: #DC2626; } 50% { color: #EF4444; } }
+        @keyframes bounce-gacha { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .animate-bounce-gacha { animation: bounce-gacha 1s ease-in-out infinite; }
+    </style>
+</head>
+<body class="min-h-screen antialiased flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl font-bold">CQ</div>
+                    <div>
+                        <h1 class="font-semibold text-gray-900 leading-tight">ห้องสอบปฏิบัติการ</h1>
+                        <p id="nav-project-name" class="text-xs text-gray-500 font-medium">กำลังโหลดวิชา...</p>
+                    </div>
+                </div>
+                
+                <div id="timer-container" class="hidden sm:flex items-center justify-center">
+                    <div class="bg-gray-100 px-4 py-2 rounded-full border border-gray-200 flex items-center gap-2 shadow-inner">
+                        <span class="text-lg">⏱️</span>
+                        <span id="countdown-timer" class="font-mono text-xl font-medium tracking-wider text-gray-800">15:00</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- แสดงเหรียญ Super Token -->
+                    <div class="hidden sm:flex items-center gap-1.5 bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200 shadow-sm" title="Super Tokens">
+                        <span class="text-lg">🌟</span>
+                        <span id="nav-super-token" class="font-bold text-yellow-700 text-lg">0</span>
+                    </div>
+                    
+                    <div class="hidden md:block text-right">
+                        <p id="nav-student-name" class="text-sm font-semibold text-gray-900">ชื่อ-นามสกุล</p>
+                        <p id="nav-student-id" class="text-xs text-gray-500">รหัสนักศึกษา • ห้อง</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow bg-[#F5F5F7] py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+
+            <div class="mb-8" id="header-section">
+                <h2 id="greeting-title" class="text-2xl font-bold text-gray-900 mb-1">เตรียมตัวให้พร้อม!</h2>
+                <p id="greeting-desc" class="text-gray-600">เติมโค้ดให้ถูกต้องสมบูรณ์ เมื่อทำเสร็จแล้วให้กดปุ่ม "ส่งคำตอบ"</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <div>
+                        <span id="mode-badge" class="px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-md mr-2 uppercase tracking-wider">โจทย์ที่ได้รับ</span>
+                        <span id="exam-set-badge" class="text-sm font-medium text-gray-600">ชุดที่ -</span>
+                    </div>
+                    <div id="score-header" class="text-sm text-gray-500 font-medium">คะแนนเต็ม: 10 คะแนน</div>
+                </div>
+
+                <div class="p-6">
+                    <h3 id="question-title" class="text-lg font-semibold text-gray-900 mb-4">กำลังโหลดข้อสอบ...</h3>
+                    <div id="code-container" class="code-block text-sm sm:text-base">
+                        // กำลังโหลดชุดคำสั่ง...
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end mb-12">
+                <button id="submit-exam-btn" onclick="submitExam()" class="px-8 py-4 bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium text-lg rounded-xl transition duration-200 shadow-lg shadow-blue-500/25 active:scale-95 flex items-center gap-2">
+                    ส่งคำตอบ (Submit Exam)
+                </button>
+                <button id="exit-review-btn" onclick="logoutAndExit()" class="hidden px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-medium text-lg rounded-xl transition duration-200 shadow-lg active:scale-95 items-center gap-2">
+                    กลับสู่หน้าหลัก
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal แจ้งเตือน Gacha / Real-time Drop -->
+    <div id="gacha-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center transform scale-50 transition-transform duration-500" id="gacha-modal-content">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">🎁 Mystery Drop!</h2>
+            <p class="text-gray-500 mb-6">ผู้สอนได้ทำการสุ่มแจกเหรียญรางวัลพิเศษ!</p>
+            <div class="text-7xl mb-6 animate-bounce-gacha">🌟</div>
+            <p class="text-lg font-semibold text-yellow-600 mb-6 bg-yellow-50 py-3 rounded-lg border border-yellow-200">
+                คุณได้รับ Super Token <span id="gacha-amount" class="text-2xl font-bold">1</span> เหรียญ
+            </p>
+            <button onclick="closeGachaModal()" class="w-full py-3 bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium rounded-xl transition shadow-lg active:scale-95">
+                รับรางวัลและทำข้อสอบต่อ
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Success -->
+    <div id="success-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm hidden opacity-0 transition-opacity">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl text-green-500">✓</div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">ส่งข้อสอบสำเร็จ!</h2>
+            <p class="text-gray-500 mb-6">ระบบได้บันทึกคำตอบเรียบร้อยแล้ว รออาจารย์ปิดห้องสอบเพื่อดูเฉลยนะครับ</p>
+            <p id="score-display" class="text-lg font-semibold text-blue-600 mb-6 bg-blue-50 py-2 rounded-lg">คะแนนที่คุณได้: - / 10</p>
+            <button onclick="logoutAndExit()" class="w-full py-3 bg-gray-900 text-white font-medium rounded-xl">กลับสู่หน้าหลัก</button>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ อย่าลืมใส่ API Key 
+        const SUPABASE_URL = "https://oqbvojrpwwhrotbimfwz.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_zQZzYaPPmEmgAOxha5PJOQ_iK_OYGVZ";
+        
+        let supabaseClient = null;
+        let activeSession = null;
+        let currentExamSet = null; 
+        
+        // 📚 คลังข้อสอบ ExpenseNote 
+        const allExamsDatabase = {
+            "ExpenseNote": {
+                set_1: {
+                    title: "ชุดที่ 1: เติมคำสั่งเกี่ยวกับ Activity และ Validation เบื้องต้น",
+                    codeTemplate: `class MainActivity : <input type="text" class="code-input" style="width: 150px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val tvTotal = findViewById&lt;<input type="text" class="code-input" style="width: 100px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.tvTotal)
+        <input type="text" class="code-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> total: Double = 0.0
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.<input type="text" class="code-input" style="width: 60px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>.toString().trim()
+            
+            if (amountText.isEmpty()) {
+                <input type="text" class="code-input" style="width: 80px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>.makeText(this, "ว่าง", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener 
+            }
+
+            val amount = amountText.<input type="text" class="code-input" style="width: 150px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()
+            if (amount != null) {
+                total <input type="text" class="code-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> amount
+                val showNote = if (noteText.<input type="text" class="code-input" style="width: 120px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>()) noteText else "ไม่ระบุ"
+                
+                tvTotal.text = "ยอดรวม: %.2f".<input type="text" class="code-input" style="width: 80px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>(total)
+                etAmount.text.<input type="text" class="code-input" style="width: 80px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+            }
+        }
+    }
+}`,
+                    answers: ["AppCompatActivity", "TextView", "var", "text", "Toast", "toDoubleOrNull", "+=", "isNotEmpty", "format", "clear"]
+                },
+                set_2: {
+                    title: "ชุดที่ 2: เติมคำสั่งการตรวจสอบเงื่อนไขยอดเงิน",
+                    codeTemplate: `class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        <input type="text" class="code-input" style="width: 150px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>(R.layout.activity_main)
+
+        var total: <input type="text" class="code-input" style="width: 90px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button> = 0.0
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.toString().<input type="text" class="code-input" style="width: 80px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button>()
+            if (amountText.isEmpty()) {
+                <input type="text" class="code-input" style="width: 220px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>
+            }
+
+            val amount = amountText.toDoubleOrNull()
+            if (amount <input type="text" class="code-input" style="width: 80px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>) {
+                total += amount
+                val showNote = if (noteText.<input type="text" class="code-input" style="width: 120px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()) noteText <input type="text" class="code-input" style="width: 60px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> "ไม่ระบุ"
+                tvTotal.<input type="text" class="code-input" style="width: 70px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> = "ยอดรวม: %.2f".format(total)
+            }
+        }
+        btnClear.setOnClickListener {
+            total = <input type="text" class="code-input" style="width: 60px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+            etAmount.<input type="text" class="code-input" style="width: 120px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+        }
+    }`,
+                    answers: ["setContentView", "Double", "trim", "return@setOnClickListener", "!=null", "isNotEmpty", "else", "text", "0.0", "text.clear"]
+                },
+                set_3: {
+                    title: "ชุดที่ 3: เติมคำสั่งการดึงข้อมูลและการแปลงชนิดตัวแปร",
+                    codeTemplate: `class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: <input type="text" class="code-input" style="width: 80px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val etAmount = findViewById&lt;<input type="text" class="code-input" style="width: 100px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.etAmount)
+        var total: Double = 0.0
+
+        btnClear.<input type="text" class="code-input" style="width: 180px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> {
+            total = 0.0
+            etAmount.text.clear()
+        }
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.toString().<input type="text" class="code-input" style="width: 80px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>()
+            if (amountText.isEmpty()) <input type="text" class="code-input" style="width: 220px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>
+
+            val amount = amountText.<input type="text" class="code-input" style="width: 150px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()
+            if (amount != null) {
+                total <input type="text" class="code-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> amount
+                tvLastItem.<input type="text" class="code-input" style="width: 70px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> = "รายการล่าสุด: %.2f".<input type="text" class="code-input" style="width: 80px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>(amount)
+                etAmount.text.<input type="text" class="code-input" style="width: 80px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+            }
+        }
+    }`,
+                    answers: ["Bundle", "EditText", "setOnClickListener", "trim", "return@setOnClickListener", "toDoubleOrNull", "+=", "text", "format", "clear"]
+                },
+                set_4: {
+                    title: "ชุดที่ 4: เติมคำสั่งการตรวจสอบค่า Null และการกำหนด View",
+                    codeTemplate: `class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(<input type="text" class="code-input" style="width: 100px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>.activity_main)
+
+        val btnAdd = findViewById&lt;<input type="text" class="code-input" style="width: 80px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>&gt;(R.id.btnAdd)
+        <input type="text" class="code-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> total: Double = 0.0
+
+        btnAdd.setOnClickListener {
+            val amountText = etAmount.text.<input type="text" class="code-input" style="width: 100px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>().trim()
+            if (amountText.<input type="text" class="code-input" style="width: 100px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>()) return@setOnClickListener 
+
+            val amount = amountText.toDoubleOrNull()
+            if (amount == <input type="text" class="code-input" style="width: 60px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>) return@setOnClickListener
+            
+            <input type="text" class="code-input" style="width: 70px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button> += amount
+            val showNote = if (noteText.isNotEmpty()) noteText <input type="text" class="code-input" style="width: 60px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button> "ไม่ระบุ"
+            
+            tvTotal.text = "ยอดรวมวันนี้: %.2f บาท".format(total)
+        }
+        btnClear.setOnClickListener {
+            total = <input type="text" class="code-input" style="width: 60px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+            etAmount.<input type="text" class="code-input" style="width: 120px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>()
+        }
+    }`,
+                    answers: ["R.layout", "Button", "var", "toString", "isEmpty", "null", "total", "else", "0.0", "text.clear"]
+                }
+            }
+        };
+
+        window.onload = function() {
+            // ระบบป้องกันการพัง กรณีลืมเปลี่ยน API Keys
+            if (SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL" || !SUPABASE_URL.startsWith('http')) {
+                document.body.innerHTML = `
+                    <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 gap-6">
+                        <div class="text-center bg-white p-8 rounded-2xl shadow-lg border border-red-100 max-w-sm w-full">
+                            <div class="text-red-500 text-5xl mb-4">⚠️</div>
+                            <h2 class="text-xl font-bold mb-2">ตั้งค่าระบบไม่สมบูรณ์</h2>
+                            <p class="text-sm text-gray-500 mb-6">กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในโค้ดไฟล์ให้ถูกต้องก่อนเปิดใช้งานครับ</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (err) {
+                alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้: " + err.message);
+                return;
+            }
+
+            const sessionStr = sessionStorage.getItem('activeExamSession');
+            
+            if (!sessionStr) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            activeSession = JSON.parse(sessionStr);
+            document.getElementById('nav-student-name').innerText = activeSession.full_name;
+            document.getElementById('nav-student-id').innerText = `${activeSession.student_id} • ห้อง ${activeSession.room} เลขที่ ${activeSession.class_number}`;
+            document.getElementById('nav-project-name').innerText = `วิชา: ${activeSession.project_name}`;
+            document.getElementById('nav-super-token').innerText = activeSession.super_tokens || 0;
+
+            if (activeSession.mode === 'review') {
+                setupReviewMode();
+            } else {
+                setupExam();
+                checkGacha();
+                listenForSuperTokens(); // ซิงค์จำนวนเหรียญที่ navbar แบบเงียบ ๆ
+                listenForGachaDrops();  // โชว์ป๊อปอัพ Mystery Drop เฉพาะตอนอาจารย์กด "สุ่มแจก" เท่านั้น
+                document.getElementById('timer-container').classList.remove('hidden');
+                startTimer(15 * 60); 
+            }
+        }
+
+        function checkGacha() {
+            if (activeSession.got_gacha) {
+                document.getElementById('gacha-amount').innerText = activeSession.gacha_amount;
+                const modal = document.getElementById('gacha-modal');
+                const content = document.getElementById('gacha-modal-content');
+                
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-50');
+                    content.classList.add('scale-100');
+                }, 50);
+
+                activeSession.got_gacha = false;
+                sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
+            }
+        }
+
+        // 🌟 ซิงค์จำนวนเหรียญแบบเงียบ ๆ (Real-time) — ไม่โชว์ป๊อปอัพ แค่อัปเดตตัวเลขที่ navbar
+        // ครอบคลุมทุกกรณีที่เหรียญเปลี่ยน ไม่ว่าจะแจกแบบสุ่ม แจกรายคน หรือใช้เหรียญไปแล้ว
+        function listenForSuperTokens() {
+            if (!supabaseClient || !activeSession) return;
+            
+            supabaseClient.channel('student-token-updates')
+                .on('postgres_changes', { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'students', 
+                    filter: `student_id=eq.${activeSession.student_id}` 
+                }, (payload) => {
+                    const newTokens = payload.new.super_tokens || 0;
+                    activeSession.super_tokens = newTokens;
+                    sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
+                    document.getElementById('nav-super-token').innerText = newTokens;
+                }).subscribe();
+        }
+
+        // 🎁 รับสัญญาณ "สุ่มแจก Gacha" จากอาจารย์โดยเฉพาะ — โชว์ป๊อปอัพ Mystery Drop เฉพาะตอนนี้เท่านั้น
+        // (แยกออกจาก listenForSuperTokens เพื่อไม่ให้การแจกเหรียญรายคนไปโชว์ป๊อปอัพผิด ๆ)
+        function listenForGachaDrops() {
+            if (!supabaseClient || !activeSession) return;
+
+            supabaseClient.channel('gacha-broadcast')
+                .on('broadcast', { event: 'gacha_drop' }, (msg) => {
+                    const payload = msg.payload || {};
+                    if (payload.student_id !== activeSession.student_id) return; // ไม่ใช่ของเรา ข้ามไป
+
+                    document.getElementById('gacha-amount').innerText = payload.amount || 1;
+                    const modal = document.getElementById('gacha-modal');
+                    const content = document.getElementById('gacha-modal-content');
+
+                    modal.classList.remove('hidden');
+                    setTimeout(() => {
+                        modal.classList.remove('opacity-0');
+                        content.classList.remove('scale-50');
+                        content.classList.add('scale-100');
+                    }, 50);
+                }).subscribe();
+        }
+
+        function closeGachaModal() {
+            document.getElementById('gacha-modal').classList.add('opacity-0');
+            setTimeout(() => document.getElementById('gacha-modal').classList.add('hidden'), 300);
+        }
+
+        // 💡 ระบบคำใบ้ Normal (จำกัด 3 ครั้ง + เติม 2 ตัวแรกให้เลย)
+        function useHint(index) {
+            if (typeof activeSession.normal_hints_used === 'undefined') {
+                activeSession.normal_hints_used = 0;
+            }
+
+            if (activeSession.normal_hints_used >= 3) {
+                alert("❌ คุณใช้สิทธิ์คำใบ้ปกติ (💡) ครบ 3 ครั้งแล้วครับ!\nพยายามคิดด้วยตัวเอง หรือใช้ Super Token แทนนะ");
+                return;
+            }
+
+            const remaining = 3 - activeSession.normal_hints_used;
+            if(confirm(`คุณมีสิทธิ์คำใบ้ปกติ (💡) เหลือ ${remaining} ครั้ง\nต้องการใช้ 1 สิทธิ์ เพื่อเติมคำใบ้ 2 ตัวอักษรลงในช่องนี้หรือไม่?`)) {
+                
+                activeSession.normal_hints_used++;
+                sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
+
+                const correctAns = currentExamSet.answers[index];
+                const hint = correctAns.substring(0, 2); 
+                
+                // เติมลง Textbox ให้เลย
+                const input = document.getElementById(`q${index}`);
+                if(input) {
+                    input.value = hint;
+                    input.focus();
+                    input.classList.add('border-blue-500', 'bg-blue-900', 'text-white');
+                    setTimeout(() => input.classList.remove('border-blue-500', 'bg-blue-900', 'text-white'), 1500);
+                }
+                
+                alert(`💡 เติมคำใบ้ "${hint}" ลงในช่องให้แล้วครับ!\n(เหลือสิทธิ์คำใบ้ปกติอีก ${3 - activeSession.normal_hints_used} ครั้ง)`);
+            }
+        }
+
+        // 🌟 ระบบคำใบ้ Super Token (เติมคำตอบเต็ม)
+        async function useSuperToken(index) {
+            if (activeSession.super_tokens > 0) {
+                if(confirm(`คุณมีเหรียญ🌟 ${activeSession.super_tokens} เหรียญ\nต้องการใช้ 1 เหรียญ เพื่อเติมคำตอบข้อนี้ทันทีหรือไม่?`)) {
+                    activeSession.super_tokens--;
+                    document.getElementById('nav-super-token').innerText = activeSession.super_tokens;
+                    sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
+                    
+                    if(supabaseClient) {
+                        supabaseClient.from('students').update({ super_tokens: activeSession.super_tokens }).eq('student_id', activeSession.student_id).then();
+                    }
+
+                    const input = document.getElementById(`q${index}`);
+                    input.value = currentExamSet.answers[index];
+                    input.classList.add('bg-yellow-100', 'border-yellow-400', 'text-yellow-800');
+                    input.readOnly = true; 
+                }
+            } else {
+                alert('❌ คุณไม่มี Super Token เหลือแล้ว! (อาจารย์อาจจะสุ่มแจกให้ในระหว่างการสอบ)');
+            }
+        }
+
+        // แทรกปุ่ม 🌟 อัตโนมัติคู่กับ 💡
+        function getExamTemplateWithTokens(templateHTML) {
+            return templateHTML.replace(/<button class="hint-btn" onclick="useHint\((\d+)\)">💡<\/button>/g, 
+                `<button class="hint-btn" onclick="useHint($1)" title="ดูคำใบ้ (จำกัด 3 ครั้ง)">💡</button>
+                 <button class="hint-btn super-btn" onclick="useSuperToken($1)" title="ใช้ Super Token เติมคำตอบ">🌟</button>`);
+        }
+      
+        function setupExam() {
+            const projectData = allExamsDatabase[activeSession.project_name];
+            const availableSets = Object.keys(projectData).filter(k => k.startsWith('set_')).sort();
+            const setIndex = (parseInt(activeSession.class_number) || 0) % availableSets.length;
+            currentExamSet = projectData[availableSets[setIndex]];
+
+            document.getElementById('greeting-title').innerText = `เตรียมตัวให้พร้อม, ${activeSession.full_name.split(' ')[1]}!`;
+            document.getElementById('question-title').innerText = currentExamSet.title;
+            
+            document.getElementById('code-container').innerHTML = getExamTemplateWithTokens(currentExamSet.codeTemplate);
+            document.getElementById('exam-set-badge').innerText = `ชุดที่ ${setIndex + 1}`;
+        }
+
+        // โหมดทบทวน
+        async function setupReviewMode() {
+            const projectData = allExamsDatabase[activeSession.project_name];
+            const availableSets = Object.keys(projectData).filter(k => k.startsWith('set_')).sort();
+            const setIndex = (parseInt(activeSession.class_number) || 0) % availableSets.length;
+            currentExamSet = projectData[availableSets[setIndex]];
+
+            document.getElementById('greeting-title').innerText = `📚 โหมดทบทวนเฉลย (Review Mode)`;
+            document.getElementById('greeting-desc').innerText = `เปรียบเทียบคำตอบที่คุณส่ง กับเฉลยที่ถูกต้องของระบบ`;
+            document.getElementById('mode-badge').innerText = `เฉลยข้อสอบ`;
+            document.getElementById('mode-badge').classList.replace('bg-blue-100', 'bg-indigo-100');
+            document.getElementById('mode-badge').classList.replace('text-blue-800', 'text-indigo-800');
+            
+            document.getElementById('question-title').innerText = currentExamSet.title;
+            document.getElementById('code-container').innerHTML = currentExamSet.codeTemplate;
+            document.getElementById('exam-set-badge').innerText = `ชุดที่ ${setIndex + 1}`;
+            
+            document.getElementById('submit-exam-btn').classList.add('hidden');
+            document.getElementById('exit-review-btn').classList.remove('hidden');
+            document.getElementById('exit-review-btn').classList.add('flex');
+
+            try {
+                const { data, error } = await supabaseClient.from('exam_results')
+                    .select('student_answers, score')
+                    .eq('student_id', activeSession.student_id)
+                    .eq('project_name', activeSession.project_name)
+                    .single();
+                
+                if (data) {
+                    document.getElementById('score-header').innerHTML = `<span class="text-indigo-600 font-bold">คะแนนของคุณ: ${data.score} / 10</span>`;
+                    const ansArray = data.student_answers || [];
+                    
+                    for(let i=0; i<currentExamSet.answers.length; i++) {
+                        const input = document.getElementById(`q${i}`);
+                        if(!input) continue;
+                        
+                        const studentAns = ansArray[i] || "";
+                        input.value = studentAns;
+                        input.disabled = true;
+
+                        const correctAns = currentExamSet.answers[i];
+                        const cleanStudent = studentAns.trim().toLowerCase().replace(/\s+/g, '');
+                        const cleanCorrect = correctAns.toLowerCase().replace(/\s+/g, '');
+
+                        if (cleanStudent === cleanCorrect || 
+                           (cleanCorrect === "!=null" && cleanStudent === "!=null") ||
+                           (cleanCorrect === "+=" && cleanStudent === "+=")) {
+                            input.classList.add('bg-green-100', 'text-green-800', 'border-green-500');
+                        } else {
+                            input.classList.add('bg-red-100', 'text-red-800', 'border-red-500');
+                            const span = document.createElement('span');
+                            span.className = "text-xs bg-green-500 text-white px-2 py-1 rounded ml-2 shadow-sm font-sans";
+                            span.innerText = "เฉลย: " + correctAns;
+                            input.parentNode.insertBefore(span, input.nextSibling);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("ดึงข้อมูล Review ไม่สำเร็จ:", err);
+            }
+
+            document.querySelectorAll('.hint-btn').forEach(btn => btn.style.display = 'none');
+        }
+
+        let timerInterval;
+        function startTimer(durationInSeconds) {
+            let timer = durationInSeconds;
+            const displayDesktop = document.getElementById('countdown-timer');
+            const displayMobile = document.getElementById('countdown-timer-mobile');
+            
+            timerInterval = setInterval(function () {
+                let minutes = parseInt(timer / 60, 10);
+                let seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                const timeStr = minutes + ":" + seconds;
+                displayDesktop.textContent = timeStr;
+                displayMobile.textContent = timeStr;
+
+                if (timer <= 60) {
+                    displayDesktop.classList.add('timer-warning');
+                    displayMobile.classList.add('timer-warning');
+                }
+
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    alert("⏳ หมดเวลาทำข้อสอบ! ระบบจะส่งคำตอบของคุณโดยอัตโนมัติ");
+                    submitExam(); 
+                }
+            }, 1000);
+        }
+
+        async function submitExam() {
+            if (!currentExamSet) return; 
+            const btn = document.getElementById('submit-exam-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> กำลังส่ง...`;
+            clearInterval(timerInterval);
+
+            let score = 0;
+            const totalQuestions = currentExamSet.answers.length;
+            const studentAnswers = []; 
+            
+            for (let i = 0; i < totalQuestions; i++) {
+                const inputElement = document.getElementById(`q${i}`);
+                if (inputElement) {
+                    studentAnswers.push(inputElement.value);
+
+                    const studentAnswer = inputElement.value.trim().toLowerCase().replace(/\s+/g, '');
+                    const correctAnswer = currentExamSet.answers[i].toLowerCase().replace(/\s+/g, '');
+                    
+                    if (studentAnswer === correctAnswer || 
+                       (correctAnswer === "!=null" && studentAnswer === "!=null") ||
+                       (correctAnswer === "+=" && studentAnswer === "+=")) {
+                        score += (10 / totalQuestions);
+                    }
+                } else {
+                    studentAnswers.push("");
+                }
+            }
+            score = Math.round(score * 10) / 10;
+
+            const projectData = allExamsDatabase[activeSession.project_name];
+            const availableSets = Object.keys(projectData).filter(k => k.startsWith('set_')).sort();
+            const setIndex = (parseInt(activeSession.class_number) || 0) % availableSets.length;
+            const currentSetName = availableSets[setIndex];
+
+            if (supabaseClient) {
+                try {
+                    // ✅ ส่ง exam_set + hints_used เข้า DB ถูกต้องแล้วในจุดนี้
+                    const { error } = await supabaseClient
+                        .from('exam_results')
+                        .insert([
+                            { 
+                                student_id: activeSession.student_id, 
+                                project_name: activeSession.project_name,
+                                exam_set: currentSetName, 
+                                score: score,
+                                hints_used: activeSession.normal_hints_used || 0,
+                                student_answers: studentAnswers 
+                            }
+                        ]);
+                    if (error) throw error;
+                } catch (err) {
+                    alert("ส่งข้อมูลไม่สำเร็จ กรุณาแจ้งอาจารย์ผู้สอน\n" + err.message);
+                }
+            }
+            showSuccessModal(score);
+        }
+
+        function showSuccessModal(score) {
+            document.getElementById('score-display').innerText = `คะแนนที่คุณได้: ${score} / 10`;
+            const modal = document.getElementById('success-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 50);
+        }
+
+        function logoutAndExit() {
+            sessionStorage.removeItem('activeExamSession');
+            window.location.href = 'index.html'; 
+        }
+
+        let cheatCount = 0;
+        document.addEventListener("visibilitychange", function() {
+            if (document.hidden && activeSession && activeSession.mode !== 'review') {
+                cheatCount++;
+                console.warn(`ผู้ใช้เปลี่ยนหน้าจอครั้งที่ ${cheatCount}`);
+            }
+        });
+    </script>
+</body>
+</html>

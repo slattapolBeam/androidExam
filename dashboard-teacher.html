@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👨‍🏫 Coding Quiz Portal - Admin Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Google Fonts (Inter & Prompt) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Prompt', 'Inter', sans-serif;
+            background-color: #F5F5F7;
+            color: #1D1D1F;
+        }
+        /* Custom scrollbar for table */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .tab-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .tab-btn.active {
+            background-color: #0071E3;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 113, 227, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- Section 1: Gate / Authentication Login -->
+    <div id="admin-gate" class="fixed inset-0 z-50 flex items-center justify-center bg-[#F5F5F7]">
+        <div class="w-full max-w-md p-8 bg-white rounded-3xl shadow-xl border border-gray-100 mx-4 transition-all duration-300">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-2xl text-blue-600 mb-4 text-3xl">👨‍🏫</div>
+                <h1 class="text-2xl font-semibold tracking-tight text-gray-900">ศูนย์บัญชาการผู้สอน</h1>
+                <p class="text-sm text-gray-500 mt-2">กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ Dashboard</p>
+            </div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-6">
+                    <input type="password" id="admin-password" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-center tracking-widest text-lg" 
+                        placeholder="••••••••">
+                    <p id="login-error" class="text-red-500 text-xs mt-2 hidden text-center">❌ รหัสผ่านไม่ถูกต้อง</p>
+                </div>
+                <button type="submit" class="w-full py-3 bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium rounded-xl transition shadow-md shadow-blue-500/10 active:scale-[0.98]">
+                    เข้าสู่ระบบด่วน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Section 2: Main Dashboard -->
+    <div id="main-dashboard" class="hidden opacity-0 transition-opacity duration-500 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 mb-6 border-b border-gray-200">
+            <div>
+                <div class="flex items-center gap-3">
+                    <span id="db-status-badge" class="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex items-center gap-1.5 transition-colors">
+                        <span id="db-status-dot" class="w-2 h-2 bg-gray-400 rounded-full"></span> 
+                        <span id="db-status-text">Connecting...</span>
+                    </span>
+                    <span id="realtime-badge" class="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full flex items-center gap-1.5 transition-all">
+                        <span id="realtime-dot" class="w-2 h-2 bg-gray-400 rounded-full"></span> Realtime Off
+                    </span>
+                </div>
+                <h1 class="text-3xl font-semibold tracking-tight text-gray-900 mt-2">Coding Quiz Portal 📊</h1>
+            </div>
+            
+            <div class="mt-4 md:mt-0 flex flex-wrap gap-3">
+                <button id="sort-toggle-btn" onclick="toggleSortMode()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition active:scale-95 text-sm shadow-sm">
+                    🔢 เรียงตามเลขที่
+                </button>
+                <button onclick="fetchExamResults()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition active:scale-95 text-sm shadow-sm">
+                    🔄 รีเฟรช
+                </button>
+                <button onclick="openGiveTokenModal()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 text-yellow-700 font-medium rounded-xl transition active:scale-95 text-sm shadow-sm">
+                    🌟 แจก Super Token รายคน
+                </button>
+                <button onclick="exportToCSV()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium rounded-xl transition active:scale-95 text-sm shadow-sm shadow-blue-500/10">
+                    📥 ดาวน์โหลด CSV
+                </button>
+            </div>
+        </header>
+
+        <!-- Error Message Banner -->
+        <div id="config-error-banner" class="hidden bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-xl">
+            <div class="flex">
+                <div class="flex-shrink-0"><span class="text-red-500">⚠️</span></div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">พบปัญหาในการเชื่อมต่อฐานข้อมูล</h3>
+                    <p class="text-sm text-red-700 mt-1" id="config-error-text">กรุณาตรวจสอบการตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในโค้ด</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- โซนตัวควบคุมการสอบ (Project & Room Selectors) -->
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                
+                <!-- ตัวเลือก Quiz / Project -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg">📚</div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">หัวข้อการสอบ (Project)</label>
+                        <select id="project-filter" onchange="onProjectChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5 font-medium">
+                            <option value="ExpenseNote">ExpenseNote (Kotlin)</option>
+                            <option value="BasicPython">พื้นฐานภาษา Python</option>
+                            <option value="MidtermExam">สอบกลางภาค (Midterm)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hidden lg:block w-px h-12 bg-gray-200"></div>
+
+                <!-- แท็บเลือกห้องเรียน -->
+                <div class="flex-1 overflow-x-auto">
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">เลือกห้องเรียน</label>
+                    <div id="room-tabs-container" class="flex items-center gap-2 pb-1">
+                        <!-- Tabs generated by JS -->
+                        <button class="tab-btn active px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-600">กำลังโหลด...</button>
+                    </div>
+                </div>
+
+                <!-- สวิตช์ Realtime -->
+                <div class="flex items-center gap-3 shrink-0 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                    <span class="text-sm font-medium text-gray-700">📡 สตรีมมิ่งสด:</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="realtime-toggle" onchange="toggleRealtimeListener()" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🆕 แผงควบคุมห้องสอบ (Session Manager & PIN Generator) -->
+        <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 shadow-sm mb-8 flex flex-col md:flex-row items-center justify-between gap-6 transition-all">
+            <div>
+                <h3 class="text-indigo-900 font-semibold text-xl flex items-center gap-2">
+                    🔑 ระบบจัดการรหัสเข้าห้องสอบ (PIN)
+                </h3>
+                <p class="text-sm text-indigo-700 mt-1">ใช้สำหรับปลดล็อกให้นักศึกษาเข้าทำข้อสอบวิชา <span id="display-project-name" class="font-bold bg-indigo-100 px-2 py-0.5 rounded">ExpenseNote</span></p>
+            </div>
+            
+            <div id="session-controls" class="flex items-center gap-4">
+                <!-- State 1: No Active Session -->
+                <button id="btn-generate-pin" onclick="generatePin()" class="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-md transition active:scale-95 flex items-center gap-2">
+                    <span class="text-lg">▶️</span> เปิดห้องสอบ (สุ่มรหัส PIN)
+                </button>
+                
+                <!-- State 2: Active Session -->
+                <div id="active-pin-display" class="hidden flex items-stretch gap-3">
+                    <div class="bg-white px-6 py-2 rounded-xl border-2 border-indigo-200 shadow-sm flex flex-col justify-center items-center">
+                        <span class="block text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5">รหัส PIN ปัจจุบัน</span>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                            <span id="current-pin-text" class="text-3xl font-mono font-bold text-indigo-700 tracking-[0.2em]">------</span>
+                        </div>
+                    </div>
+                    <button onclick="closeSession()" title="ปิดรับคำตอบสำหรับวิชานี้" class="px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-medium rounded-xl transition active:scale-95 flex flex-col items-center justify-center">
+                        <span class="text-xl mb-1">⏹️</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider">ปิดสอบ</span>
+                    </button>
+                    <button onclick="distributeSuperTokens()" title="สุ่มแจก Super Token ให้นักศึกษาที่กำลังสอบอยู่" class="px-4 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 text-yellow-700 font-medium rounded-xl transition active:scale-95 flex flex-col items-center justify-center">
+                        <span class="text-xl mb-1">🎁</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider">สุ่มแจก</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-gray-50 rounded-full opacity-50 transition-transform"></div>
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-400 relative z-10">นักศึกษาในห้อง</p>
+                <p id="stat-total" class="text-3xl font-semibold text-gray-900 mt-2 relative z-10">0</p>
+                <p class="text-xs text-gray-400 mt-1 relative z-10"><span id="stat-submitted" class="text-green-600 font-medium">ส่งแล้ว 0</span> คน</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 transition-transform"></div>
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-400 relative z-10">คะแนนเฉลี่ยรวม</p>
+                <p id="stat-avg" class="text-3xl font-semibold text-blue-600 mt-2 relative z-10">0.00</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-green-50 rounded-full opacity-50 transition-transform"></div>
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-400 relative z-10">คะแนนสูงสุด</p>
+                <p id="stat-max" class="text-3xl font-semibold text-green-600 mt-2 relative z-10">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-orange-50 rounded-full opacity-50 transition-transform"></div>
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-400 relative z-10">คะแนนต่ำสุด</p>
+                <p id="stat-min" class="text-3xl font-semibold text-orange-600 mt-2 relative z-10">0</p>
+            </div>
+        </div>
+
+        <!-- Main Score Table View -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-400 uppercase text-xs tracking-wider font-semibold border-b border-gray-100">
+                            <th class="py-4 px-6 text-center w-24">สถานะ</th>
+                            <th class="py-4 px-6 text-center w-20">ห้อง</th>
+                            <th class="py-4 px-6 text-center w-20">เลขที่</th>
+                            <th class="py-4 px-6 w-44">รหัสนักศึกษา</th>
+                            <th class="py-4 px-6">ชื่อ - นามสกุล</th>
+                            <th class="py-4 px-6 text-center w-36">คะแนนที่ได้</th>
+                            <th class="py-4 px-6 text-center w-40 hidden sm:table-cell">เวลาที่ส่ง</th>
+                            <th class="py-4 px-6 text-center w-28">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body" class="divide-y divide-gray-50 text-sm text-gray-700">
+                        <tr><td colspan="8" class="py-12 text-center text-gray-400">รอการเชื่อมต่อฐานข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🌟 Modal: แจก Super Token รายคน (ระหว่างคาบเรียน) -->
+    <div id="give-token-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 transform scale-95 transition-transform max-h-[85vh] flex flex-col" id="give-token-modal-content">
+            <div class="p-6 pb-4 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">🌟 แจก Super Token รายคน</h2>
+                <p class="text-sm text-gray-500 mt-1">เลือกห้องเรียน แล้วกดแจกเหรียญให้นักศึกษาทีละคน</p>
+                <select id="give-token-room-select" onchange="renderGiveTokenList()" class="w-full mt-4 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 font-medium">
+                    <option value="">-- เลือกห้องเรียน --</option>
+                </select>
+            </div>
+            <div id="give-token-list" class="overflow-y-auto flex-1 p-4 space-y-2">
+                <p class="text-center text-gray-400 text-sm py-8">กรุณาเลือกห้องเรียนก่อนครับ</p>
+            </div>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="closeGiveTokenModal()" class="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 Supabase Integration -->
+    <script>
+        // ==========================================
+        // 🛠️ ตั้งค่า API Keys
+        // ==========================================
+        // ⚠️ สำคัญมาก: อาจารย์ต้องนำ URL และ KEY ของโปรเจกต์อาจารย์มาใส่แทนค่าตรงนี้ครับ
+        const SUPABASE_URL = "https://oqbvojrpwwhrotbimfwz.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_zQZzYaPPmEmgAOxha5PJOQ_iK_OYGVZ";
+        const ADMIN_PIN = "123456"; 
+        
+        let supabaseClient = null;
+        let globalStudents = []; 
+        let globalExamData = [];
+        let currentRoom = "ALL"; // แท็บปัจจุบันที่เปิดอยู่
+        let realtimeChannel = null;
+        let isConfigured = false; 
+        let currentSortMode = 'default'; 
+
+        window.onload = function() {
+            const dbBadge = document.getElementById('db-status-badge');
+            const dbText = document.getElementById('db-status-text');
+            const dbDot = document.getElementById('db-status-dot');
+
+            // ตรวจสอบว่ามีการแก้ไขค่าเริ่มต้น (Placeholder) หรือไม่
+            if (SUPABASE_URL !== "YOUR_SUPABASE_PROJECT_URL" && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY") {
+                isConfigured = true;
+                try {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    dbBadge.classList.replace('bg-gray-100', 'bg-green-100');
+                    dbBadge.classList.replace('text-gray-600', 'text-green-800');
+                    dbDot.classList.replace('bg-gray-400', 'bg-green-500');
+                    dbDot.classList.add('animate-pulse');
+                    dbText.innerText = "Connected to Server";
+                    onProjectChange(); // ซิงค์สถานะ PIN/ห้องสอบของวิชาที่เลือกอยู่ทันทีที่โหลดหน้า
+                } catch (error) {
+                    showConfigError("เกิดข้อผิดพลาดในการสร้างการเชื่อมต่อกับ Supabase กรุณาตรวจสอบ URL ให้ถูกต้อง");
+                    isConfigured = false;
+                }
+            } else {
+                dbText.innerText = "Waiting API Key...";
+                dbBadge.classList.replace('bg-gray-100', 'bg-orange-100');
+                dbDot.classList.replace('bg-gray-400', 'bg-orange-500');
+                showConfigError("ระบบพบว่าอาจารย์ยังไม่ได้ระบุค่า SUPABASE_URL หรือ SUPABASE_ANON_KEY ในโค้ดครับ");
+            }
+        };
+
+        function showConfigError(message) {
+            const errorBanner = document.getElementById('config-error-banner');
+            const errorText = document.getElementById('config-error-text');
+            errorBanner.classList.remove('hidden');
+            errorText.innerText = message;
+            
+            document.getElementById('room-tabs-container').innerHTML = `<span class="text-sm text-red-500 font-medium">รอการตั้งค่า API...</span>`;
+            document.getElementById('results-table-body').innerHTML = `<tr><td colspan="8" class="py-12 text-center text-red-500 font-medium">⚠️ ไม่สามารถโหลดข้อมูลได้: กรุณาตั้งค่า API Keys ในโค้ดก่อนใช้งาน</td></tr>`;
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('admin-password').value;
+            
+            if (passwordInput === ADMIN_PIN || !isConfigured) {
+                document.getElementById('admin-gate').style.display = 'none';
+                const dashboard = document.getElementById('main-dashboard');
+                dashboard.classList.remove('hidden');
+                setTimeout(() => dashboard.classList.add('opacity-100'), 50);
+
+                if (isConfigured && supabaseClient) {
+                    fetchExamResults();
+                }
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+                document.getElementById('admin-password').value = '';
+            }
+        }
+
+        // 🔑 สร้างรหัส PIN ใหม่ และเปิดห้องสอบสำหรับวิชาที่เลือกอยู่
+        async function generatePin() {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+            const projectName = document.getElementById('project-filter').value;
+            const pin = Math.floor(100000 + Math.random() * 900000).toString(); // สุ่มรหัส 6 หลัก
+
+            const btn = document.getElementById('btn-generate-pin');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '⏳ กำลังเปิดห้องสอบ...';
+            btn.disabled = true;
+
+            try {
+                // 1. ปิด session เก่าที่ยัง active ของวิชานี้ทั้งหมดก่อน (กันมี is_active=true ซ้อนกันหลายแถว)
+                const { error: closeErr } = await supabaseClient.from('exam_sessions')
+                    .update({ is_active: false })
+                    .eq('project_name', projectName)
+                    .eq('is_active', true);
+                if (closeErr) throw closeErr;
+
+                // 2. สร้างแถวใหม่ (ตาราง exam_sessions ไม่มี unique constraint บน project_name จึงต้อง insert ไม่ใช่ upsert)
+                const { error: insertErr } = await supabaseClient.from('exam_sessions')
+                    .insert([{ project_name: projectName, pin_code: pin, is_active: true }]);
+                if (insertErr) throw insertErr;
+
+                document.getElementById('btn-generate-pin').classList.add('hidden');
+                document.getElementById('active-pin-display').classList.remove('hidden');
+                document.getElementById('current-pin-text').innerText = pin;
+            } catch (err) {
+                alert("สร้าง PIN ไม่สำเร็จ: " + err.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        }
+
+        // ⏹️ ปิดห้องสอบ (ปิดรับคำตอบ) สำหรับวิชาที่เลือกอยู่ + รีเซ็ต Super Token ที่เหลือใช้ไม่หมดให้เป็น 0
+        async function closeSession() {
+            if (!supabaseClient || !isConfigured) return;
+            const projectName = document.getElementById('project-filter').value;
+            if (!confirm("ยืนยันปิดห้องสอบวิชานี้?\nนักศึกษาจะเข้าสอบใหม่ไม่ได้ (เข้าได้แค่โหมดทบทวนเฉลยเท่านั้น)\n⚠️ Super Token ที่เหลืออยู่ของนักศึกษาทุกคนจะถูกรีเซ็ตเป็น 0")) return;
+
+            try {
+                const { error } = await supabaseClient.from('exam_sessions')
+                    .update({ is_active: false })
+                    .eq('project_name', projectName)
+                    .eq('is_active', true);
+                if (error) throw error;
+
+                // 🌟 รีเซ็ต Super Token ของนักศึกษาทุกคนที่ยังเหลือเหรียญไม่ได้ใช้ ให้เป็น 0
+                // (กฎ: เหรียญที่เก็บไว้แต่ไม่ใช้ จะหมดอายุทันทีที่ session การสอบนั้นจบลง)
+                const { error: resetErr } = await supabaseClient.from('students')
+                    .update({ super_tokens: 0 })
+                    .gt('super_tokens', 0);
+                if (resetErr) throw resetErr;
+
+                document.getElementById('active-pin-display').classList.add('hidden');
+                document.getElementById('btn-generate-pin').classList.remove('hidden');
+            } catch (err) {
+                alert("ปิดห้องสอบไม่สำเร็จ: " + err.message);
+            }
+        }
+
+        // 📚 เมื่อเปลี่ยนวิชาในดรอปดาวน์: อัปเดตป้ายชื่อวิชา, เช็คสถานะ PIN ปัจจุบัน, และดึงคะแนนใหม่
+        async function onProjectChange() {
+            const projectName = document.getElementById('project-filter').value;
+            const projectText = document.getElementById('project-filter').options[document.getElementById('project-filter').selectedIndex].text;
+            document.getElementById('display-project-name').innerText = projectText;
+
+            if (supabaseClient && isConfigured) {
+                try {
+                    const { data } = await supabaseClient.from('exam_sessions')
+                        .select('pin_code')
+                        .eq('project_name', projectName)
+                        .eq('is_active', true)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (data) {
+                        document.getElementById('btn-generate-pin').classList.add('hidden');
+                        document.getElementById('active-pin-display').classList.remove('hidden');
+                        document.getElementById('current-pin-text').innerText = data.pin_code;
+                    } else {
+                        document.getElementById('btn-generate-pin').classList.remove('hidden');
+                        document.getElementById('active-pin-display').classList.add('hidden');
+                    }
+                } catch (err) {
+                    console.error("ตรวจสอบสถานะห้องสอบไม่สำเร็จ:", err);
+                }
+            }
+
+            fetchExamResults();
+        }
+
+        // 🌟 ระบบสุ่มแจก Super Token (Gacha Drop Triggered by Teacher)
+        async function distributeSuperTokens() {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+            const projectName = document.getElementById('project-filter').value;
+            
+            try {
+                // 1. ตรวจสอบว่าห้องสอบวิชานี้ Active อยู่หรือไม่
+                const { data: session, error: sessionErr } = await supabaseClient.from('exam_sessions')
+                    .select('*').eq('project_name', projectName).eq('is_active', true).single();
+                    
+                if (!session || sessionErr) {
+                    return alert("❌ ไม่สามารถแจกได้: ยังไม่มีการเปิดห้องสอบสำหรับวิชานี้ หรือห้องสอบถูกปิดไปแล้ว");
+                }
+
+                // 2. ให้ระบุจำนวนคนที่ต้องการสุ่มแจก
+                const countStr = prompt("🎁 ระบบสุ่มแจก Super Token 🎁\nกรุณาระบุจำนวนนักศึกษาที่ต้องการแจก (ระบบจะสุ่มให้เฉพาะคนที่ยังสอบไม่เสร็จ):");
+                if (!countStr) return;
+                const count = parseInt(countStr);
+                if (isNaN(count) || count <= 0) return alert("โปรดระบุจำนวนคนเป็นตัวเลขที่ถูกต้อง");
+
+                // 3. หานักศึกษาที่เข้าข่าย (กำลังสอบ & ยังไม่ส่งข้อสอบ) จากข้อมูลบนตารางปัจจุบัน
+                let eligibleStudents = globalExamData.filter(s => !s.has_submitted);
+                if (currentRoom !== "ALL") {
+                    eligibleStudents = eligibleStudents.filter(s => s.room === currentRoom);
+                }
+
+                if (eligibleStudents.length === 0) return alert("❌ ไม่มีนักศึกษาที่กำลังทำข้อสอบอยู่ในขณะนี้ หรือทุกคนส่งข้อสอบหมดแล้ว");
+
+                // ถ้ากรอกจำนวนเกิน ให้จำกัดเท่ากับคนที่มีอยู่จริง
+                const actualCount = Math.min(count, eligibleStudents.length);
+                
+                // 4. สุ่มรายชื่อนักศึกษา
+                const shuffled = eligibleStudents.sort(() => 0.5 - Math.random());
+                const selected = shuffled.slice(0, actualCount);
+
+                // 📡 เปิด channel สำหรับส่งสัญญาณ "นี่คือสุ่มแจกแบบ Gacha" ไปให้นักศึกษา
+                // (แยกจาก postgres_changes ของ DB เพื่อไม่ให้การแจกรายคนไปโชว์ป๊อปอัพ Mystery Drop ผิด ๆ)
+                const gachaChannel = supabaseClient.channel('gacha-broadcast');
+                await gachaChannel.subscribe();
+
+                // 5. แจก Token (อัปเดต Database ทีละคน)
+                let successCount = 0;
+                let blockedCount = 0;
+                // โชว์แจ้งเตือนโหลด
+                const btn = document.querySelector('button[onclick="distributeSuperTokens()"]');
+                const origText = btn.innerHTML;
+                btn.innerHTML = '<span class="text-xl mb-1">⏳</span><span class="text-[10px] uppercase font-bold tracking-wider">กำลังแจก</span>';
+                btn.disabled = true;
+
+                for (const student of selected) {
+                    // ดึงเหรียญปัจจุบันมาตรวจสอบ
+                    const { data: st } = await supabaseClient.from('students').select('super_tokens').eq('student_id', student.student_id).single();
+                    let currentTokens = st ? (st.super_tokens || 0) : 0;
+                    
+                    if (currentTokens < 3) {
+                        currentTokens += 1; // ให้เพิ่มทีละ 1 สิทธิ์ (ตันที่ 3)
+                        const { data: updateData, error: updateErr } = await supabaseClient.from('students')
+                            .update({ super_tokens: currentTokens }).eq('student_id', student.student_id)
+                            .select(); // ขอ row กลับมาเพื่อเช็คว่าเขียนเข้า DB ได้จริงหรือไม่ (กัน RLS บล็อกแบบเงียบ)
+                        if (!updateErr && updateData && updateData.length > 0) {
+                            successCount++;
+                            // 📡 ส่งสัญญาณ gacha ให้คนนี้โดยเฉพาะ เพื่อให้หน้าจอนักศึกษาโชว์ Mystery Drop
+                            gachaChannel.send({
+                                type: 'broadcast',
+                                event: 'gacha_drop',
+                                payload: { student_id: student.student_id, amount: 1 }
+                            });
+                        } else {
+                            blockedCount++;
+                        }
+                    }
+                }
+
+                supabaseClient.removeChannel(gachaChannel);
+
+                // คืนค่าปุ่ม
+                btn.innerHTML = origText;
+                btn.disabled = false;
+                
+                if (blockedCount > 0) {
+                    alert(`⚠️ แจกสำเร็จ ${successCount} คน แต่อีก ${blockedCount} คน เขียนข้อมูลไม่ผ่าน (น่าจะติด RLS Policy ของตาราง students ใน Supabase กรุณาตรวจสอบ)`);
+                } else {
+                    alert(`🎉 สุ่มแจกสำเร็จ!\nนักศึกษาผู้โชคดี ${successCount} คน ได้รับ Super Token เพิ่มเรียบร้อยแล้ว (จะเด้งขึ้นหน้าจอของเด็กทันที)`);
+                }
+
+            } catch (err) {
+                alert(`เกิดข้อผิดพลาด: ${err.message}`);
+                const btn = document.querySelector('button[onclick="distributeSuperTokens()"]');
+                if (btn) {
+                    btn.innerHTML = '<span class="text-xl mb-1">🎁</span><span class="text-[10px] uppercase font-bold tracking-wider">สุ่มแจก</span>';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // 🌟 ระบบแจก Super Token รายคน (ใช้ตอนเรียน ให้รางวัลตอนตอบคำถามถูก ไม่จำกัดว่าต้องอยู่ในห้องสอบ)
+        function openGiveTokenModal() {
+            if (globalExamData.length === 0) return alert("ยังไม่มีข้อมูลนักศึกษา กรุณากด 🔄 รีเฟรช ก่อนครับ");
+            const select = document.getElementById('give-token-room-select');
+            const rooms = [...new Set(globalExamData.map(s => s.room).filter(Boolean))].sort();
+            select.innerHTML = `<option value="">-- เลือกห้องเรียน --</option>` +
+                rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+
+            document.getElementById('give-token-list').innerHTML = `<p class="text-center text-gray-400 text-sm py-8">กรุณาเลือกห้องเรียนก่อนครับ</p>`;
+
+            const modal = document.getElementById('give-token-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('give-token-modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeGiveTokenModal() {
+            const modal = document.getElementById('give-token-modal');
+            modal.classList.add('opacity-0');
+            document.getElementById('give-token-modal-content').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function renderGiveTokenList() {
+            const room = document.getElementById('give-token-room-select').value;
+            const listEl = document.getElementById('give-token-list');
+
+            if (!room) {
+                listEl.innerHTML = `<p class="text-center text-gray-400 text-sm py-8">กรุณาเลือกห้องเรียนก่อนครับ</p>`;
+                return;
+            }
+
+            const students = globalExamData.filter(s => s.room === room)
+                .sort((a, b) => a.class_number - b.class_number);
+
+            if (students.length === 0) {
+                listEl.innerHTML = `<p class="text-center text-gray-400 text-sm py-8">ไม่พบนักศึกษาในห้องนี้</p>`;
+                return;
+            }
+
+            listEl.innerHTML = `<p class="text-center text-gray-400 text-sm py-8">⏳ กำลังโหลดจำนวนเหรียญ...</p>`;
+
+            // ดึงจำนวนเหรียญปัจจุบันของทุกคนในห้องนี้แบบ batch ครั้งเดียว (ข้อมูลสดจาก DB เสมอ)
+            let tokenMap = {};
+            try {
+                const { data: tokenData, error } = await supabaseClient.from('students')
+                    .select('student_id, super_tokens')
+                    .in('student_id', students.map(s => s.student_id));
+                if (error) throw error;
+                tokenData.forEach(t => { tokenMap[t.student_id] = t.super_tokens || 0; });
+            } catch (err) {
+                listEl.innerHTML = `<p class="text-center text-red-500 text-sm py-8">โหลดข้อมูลเหรียญไม่สำเร็จ: ${err.message}</p>`;
+                return;
+            }
+
+            listEl.innerHTML = students.map(s => {
+                const tokens = tokenMap[s.student_id] || 0;
+                const isFull = tokens >= 3;
+                const isEmpty = tokens <= 0;
+                return `
+                <div class="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100" id="give-token-row-${s.student_id}">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${s.class_number}. ${s.full_name}</p>
+                        <p class="text-xs text-gray-400 font-mono">${s.student_id}</p>
+                        <p class="text-xs mt-0.5"><span id="give-token-count-${s.student_id}" class="font-semibold ${isFull ? 'text-yellow-600' : 'text-gray-500'}">🌟 มีอยู่ ${tokens}/3 เหรียญ</span></p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button id="remove-token-btn-${s.student_id}" onclick="removeTokenFromStudent('${s.student_id}')" ${isEmpty ? 'disabled' : ''} title="หักเหรียญออก 1 เหรียญ" class="px-2.5 py-2 ${isEmpty ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-red-50 hover:bg-red-100 text-red-500'} border border-red-100 font-medium rounded-lg transition active:scale-95 text-xs">
+                            ➖
+                        </button>
+                        <button id="give-token-btn-${s.student_id}" onclick="giveTokenToStudent('${s.student_id}')" ${isFull ? 'disabled' : ''} class="px-3 py-2 ${isFull ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700'} border border-yellow-200 font-medium rounded-lg transition active:scale-95 text-xs whitespace-nowrap">
+                            ${isFull ? '🔒 ครบแล้ว' : '🌟 ให้เหรียญ'}
+                        </button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        async function giveTokenToStudent(studentId) {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+            const giveBtn = document.getElementById(`give-token-btn-${studentId}`);
+            const removeBtn = document.getElementById(`remove-token-btn-${studentId}`);
+            const countSpan = document.getElementById(`give-token-count-${studentId}`);
+            const origBtnText = giveBtn ? giveBtn.innerHTML : '';
+            if (giveBtn) { giveBtn.innerHTML = '⏳...'; giveBtn.disabled = true; }
+
+            try {
+                const { data: st, error: fetchErr } = await supabaseClient.from('students')
+                    .select('super_tokens').eq('student_id', studentId).single();
+                if (fetchErr) throw fetchErr;
+
+                let currentTokens = st ? (st.super_tokens || 0) : 0;
+                if (currentTokens >= 3) {
+                    if (countSpan) countSpan.innerHTML = `🌟 มีอยู่ ${currentTokens}/3 เหรียญ`;
+                    if (giveBtn) { giveBtn.innerHTML = '🔒 ครบแล้ว'; giveBtn.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed'); giveBtn.classList.remove('bg-yellow-50', 'hover:bg-yellow-100', 'text-yellow-700'); }
+                    return;
+                }
+
+                currentTokens += 1; // ให้ทีละ 1 เหรียญ (ตันที่ 3 เหมือนระบบแจกอื่น ๆ — อาจารย์แจกได้สูงสุดคนละไม่เกิน 3 เหรียญ)
+                const { data: updateData, error: updateErr } = await supabaseClient.from('students')
+                    .update({ super_tokens: currentTokens }).eq('student_id', studentId)
+                    .select(); // ขอ row ที่อัปเดตกลับมา เพื่อเช็คว่าเขียนเข้า DB ได้จริงหรือไม่
+                if (updateErr) throw updateErr;
+
+                // ⚠️ ถ้าไม่มี error แต่ก็ไม่มีแถวที่อัปเดตกลับมา แสดงว่าการเขียนถูกบล็อกแบบเงียบ
+                // (ส่วนใหญ่เกิดจาก Row Level Security ของ Supabase ที่ไม่อนุญาตให้ anon key เขียนตาราง students)
+                if (!updateData || updateData.length === 0) {
+                    throw new Error("ไม่มีสิทธิ์เขียนข้อมูล (RLS) กรุณาตรวจสอบ Row Level Security Policy ของตาราง students ใน Supabase ว่าอนุญาตให้ UPDATE ด้วย anon key หรือไม่");
+                }
+
+                // อัปเดตข้อความจำนวนเหรียญให้เห็นสด ๆ ทันที
+                if (countSpan) {
+                    countSpan.innerHTML = `🌟 มีอยู่ ${currentTokens}/3 เหรียญ`;
+                    if (currentTokens >= 3) countSpan.classList.add('text-yellow-600');
+                    else countSpan.classList.remove('text-yellow-600');
+                }
+
+                // เหรียญเพิ่มแล้ว แสดงว่าไม่ใช่ 0 อีกต่อไป → ปุ่มลบต้องกดได้
+                if (removeBtn) {
+                    removeBtn.disabled = false;
+                    removeBtn.classList.remove('bg-gray-100', 'text-gray-300', 'cursor-not-allowed');
+                    removeBtn.classList.add('bg-red-50', 'hover:bg-red-100', 'text-red-500');
+                }
+
+                if (currentTokens >= 3) {
+                    if (giveBtn) { giveBtn.innerHTML = '🔒 ครบแล้ว'; giveBtn.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed'); giveBtn.classList.remove('bg-yellow-50', 'hover:bg-yellow-100', 'text-yellow-700'); }
+                } else {
+                    if (giveBtn) { giveBtn.innerHTML = '✅ ให้แล้ว'; giveBtn.disabled = false; }
+                    setTimeout(() => { if (giveBtn) giveBtn.innerHTML = origBtnText; }, 1200);
+                }
+            } catch (err) {
+                alert("ให้เหรียญไม่สำเร็จ: " + err.message);
+                if (giveBtn) { giveBtn.innerHTML = origBtnText; giveBtn.disabled = false; }
+            }
+        }
+
+        // ➖ หักเหรียญออก 1 เหรียญ (เผื่อกดให้เกิน/ผิดคน หรืออาจารย์ต้องการตัดสิทธิ์)
+        async function removeTokenFromStudent(studentId) {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+            const giveBtn = document.getElementById(`give-token-btn-${studentId}`);
+            const removeBtn = document.getElementById(`remove-token-btn-${studentId}`);
+            const countSpan = document.getElementById(`give-token-count-${studentId}`);
+            const origBtnText = removeBtn ? removeBtn.innerHTML : '';
+            if (removeBtn) { removeBtn.innerHTML = '⏳'; removeBtn.disabled = true; }
+
+            try {
+                const { data: st, error: fetchErr } = await supabaseClient.from('students')
+                    .select('super_tokens').eq('student_id', studentId).single();
+                if (fetchErr) throw fetchErr;
+
+                let currentTokens = st ? (st.super_tokens || 0) : 0;
+                if (currentTokens <= 0) {
+                    if (countSpan) countSpan.innerHTML = `🌟 มีอยู่ 0/3 เหรียญ`;
+                    if (removeBtn) { removeBtn.innerHTML = '➖'; } // ไม่มีอะไรให้หักแล้ว
+                    return;
+                }
+
+                currentTokens -= 1; // หักทีละ 1 เหรียญ ไม่ต่ำกว่า 0
+                const { data: updateData, error: updateErr } = await supabaseClient.from('students')
+                    .update({ super_tokens: currentTokens }).eq('student_id', studentId)
+                    .select();
+                if (updateErr) throw updateErr;
+
+                if (!updateData || updateData.length === 0) {
+                    throw new Error("ไม่มีสิทธิ์เขียนข้อมูล (RLS) กรุณาตรวจสอบ Row Level Security Policy ของตาราง students ใน Supabase ว่าอนุญาตให้ UPDATE ด้วย anon key หรือไม่");
+                }
+
+                if (countSpan) {
+                    countSpan.innerHTML = `🌟 มีอยู่ ${currentTokens}/3 เหรียญ`;
+                    countSpan.classList.remove('text-yellow-600');
+                }
+
+                // เหรียญลดแล้ว แสดงว่าไม่ครบ 3 อีกต่อไป → ปุ่มให้เหรียญต้องกดได้
+                if (giveBtn) {
+                    giveBtn.disabled = false;
+                    giveBtn.innerHTML = '🌟 ให้เหรียญ';
+                    giveBtn.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
+                    giveBtn.classList.add('bg-yellow-50', 'hover:bg-yellow-100', 'text-yellow-700');
+                }
+
+                if (currentTokens <= 0) {
+                    if (removeBtn) { removeBtn.innerHTML = '➖'; removeBtn.disabled = true; removeBtn.classList.add('bg-gray-100', 'text-gray-300', 'cursor-not-allowed'); removeBtn.classList.remove('bg-red-50', 'hover:bg-red-100', 'text-red-500'); }
+                } else {
+                    if (removeBtn) { removeBtn.innerHTML = '✅'; removeBtn.disabled = false; }
+                    setTimeout(() => { if (removeBtn) removeBtn.innerHTML = origBtnText; }, 1200);
+                }
+            } catch (err) {
+                alert("หักเหรียญไม่สำเร็จ: " + err.message);
+                if (removeBtn) { removeBtn.innerHTML = origBtnText; removeBtn.disabled = false; }
+            }
+        }
+
+        async function fetchExamResults() {
+            if (!supabaseClient || !isConfigured) return;
+            const projectName = document.getElementById('project-filter').value;
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-gray-500"><div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mb-2"></div><br>กำลังดึงข้อมูล...</td></tr>`;
+
+            try {
+                const { data: students, error: studentError } = await supabaseClient.from('students').select('*');
+                if (studentError) throw new Error(`ไม่สามารถดึงข้อมูลตาราง students ได้: ${studentError.message}`);
+                
+                updateRoomTabs(students);
+
+                let resultsData = [];
+                const { data: results, error: resultError } = await supabaseClient.from('exam_results')
+                    .select('*')
+                    .eq('project_name', projectName);
+
+                if (resultError) {
+                    if(resultError.code === '42703' || resultError.message.includes('project_name')) {
+                        console.warn("ยังไม่มีคอลัมน์ project_name");
+                        const fallback = await supabaseClient.from('exam_results').select('*');
+                        resultsData = fallback.data || [];
+                    } else {
+                        throw new Error(`ไม่สามารถดึงข้อมูลตาราง exam_results ได้: ${resultError.message}`);
+                    }
+                } else {
+                    resultsData = results || [];
+                }
+
+                globalExamData = students.map(student => {
+                    const result = resultsData.find(r => r.student_id === student.student_id);
+                    return {
+                        room: student.room || 'ไม่ระบุ',
+                        class_number: student.class_number || 0,
+                        student_id: student.student_id,
+                        full_name: `${student.first_name} ${student.last_name}`,
+                        has_submitted: !!result,
+                        score: result ? result.score : null,
+                        timestamp: result && result.created_at ? new Date(result.created_at).toLocaleString('th-TH') : '-'
+                    };
+                });
+
+                filterData();
+
+            } catch (err) {
+                console.error("Fetch Data Error:", err);
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-red-500 font-medium">❌ เกิดข้อผิดพลาด: <br><span class="text-sm font-normal">${err.message}</span></td></tr>`;
+            }
+        }
+
+        function updateRoomTabs(students) {
+            const container = document.getElementById('room-tabs-container');
+            const rooms = [...new Set(students.map(s => s.room).filter(Boolean))].sort();
+            
+            if (currentRoom !== "ALL" && !rooms.includes(currentRoom)) currentRoom = "ALL";
+
+            let tabsHTML = `<button onclick="selectRoom('ALL')" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium ${currentRoom === 'ALL' ? 'active' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}">ทั้งหมด</button>`;
+            
+            rooms.forEach(room => {
+                const isActive = currentRoom === room;
+                const cssClass = isActive ? 'active' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50';
+                tabsHTML += `<button onclick="selectRoom('${room}')" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium ${cssClass}">${room}</button>`;
+            });
+            
+            container.innerHTML = tabsHTML;
+        }
+
+        function selectRoom(room) {
+            currentRoom = room;
+            fetchExamResults();
+        }
+
+        function toggleSortMode() {
+            const btn = document.getElementById('sort-toggle-btn');
+            if (currentSortMode === 'default') {
+                currentSortMode = 'number';
+                btn.innerHTML = '🏆 เรียงตามคะแนน';
+                btn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-200');
+            } else {
+                currentSortMode = 'default';
+                btn.innerHTML = '🔢 เรียงตามเลขที่';
+                btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-200');
+            }
+            filterData();
+        }
+
+        function filterData() {
+            let filtered = globalExamData;
+            if (currentRoom !== "ALL") {
+                filtered = globalExamData.filter(item => item.room === currentRoom);
+            }
+
+            filtered.sort((a, b) => {
+                if (currentSortMode === 'default') {
+                    if (a.has_submitted !== b.has_submitted) return a.has_submitted ? -1 : 1;
+                    if (a.has_submitted) return b.score - a.score;
+                    return a.class_number - b.class_number;
+                } else {
+                    return a.class_number - b.class_number;
+                }
+            });
+
+            renderTable(filtered);
+            calculateMetrics(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('results-table-body');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-gray-400">ยังไม่มีข้อมูลนักศึกษาในห้องนี้</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                let statusIcon, scoreDisplay;
+                let trClass = 'hover:bg-gray-50/70 transition-colors border-b border-gray-50 last:border-0';
+
+                if (item.has_submitted) {
+                    statusIcon = `<span class="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full">✓</span>`;
+                    let badgeColor = "bg-gray-100 text-gray-800";
+                    if (item.score >= 8) badgeColor = "bg-green-100 text-green-800 font-semibold";
+                    else if (item.score >= 5) badgeColor = "bg-blue-100 text-blue-800";
+                    else if (item.score > 0) badgeColor = "bg-orange-100 text-orange-800";
+                    else if (item.score === 0) badgeColor = "bg-red-100 text-red-800 border border-red-200";
+                    
+                    scoreDisplay = `<span class="inline-block px-3 py-1 rounded-full text-xs ${badgeColor} shadow-sm">${item.score} คะแนน</span>`;
+                } else {
+                    trClass += ' bg-gray-50/30 opacity-70';
+                    statusIcon = `<span class="inline-flex items-center justify-center w-6 h-6 bg-gray-200 text-gray-400 rounded-full">?</span>`;
+                    scoreDisplay = `<span class="inline-block px-3 py-1 text-xs text-gray-400">⏳ ยังไม่สอบ</span>`;
+                }
+
+                // ปุ่มลบผลสอบ — โชว์เฉพาะคนที่ส่งข้อสอบแล้วเท่านั้น (คนที่ยังไม่สอบไม่มีผลสอบให้ลบ)
+                const deleteBtn = item.has_submitted
+                    ? `<button onclick="deleteExamResult('${item.student_id}', '${item.full_name.replace(/'/g, "\\'")}')" title="ลบผลสอบ (ให้สอบใหม่ได้)" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 rounded-lg transition active:scale-95 text-xs">🗑️</button>`
+                    : `<span class="text-gray-300 text-xs">—</span>`;
+
+                return `
+                    <tr class="${trClass}">
+                        <td class="py-4 px-6 text-center">${statusIcon}</td>
+                        <td class="py-4 px-6 text-center font-medium text-gray-500">${item.room}</td>
+                        <td class="py-4 px-6 text-center font-semibold text-gray-900">${item.class_number}</td>
+                        <td class="py-4 px-6 font-mono text-xs text-gray-500">${item.student_id}</td>
+                        <td class="py-4 px-6 font-medium text-gray-800">${item.full_name}</td>
+                        <td class="py-4 px-6 text-center">${scoreDisplay}</td>
+                        <td class="py-4 px-6 text-center text-xs text-gray-400 hidden sm:table-cell">${item.timestamp}</td>
+                        <td class="py-4 px-6 text-center">${deleteBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 🗑️ ลบ/ยกเลิกผลสอบของนักศึกษา (ให้สอบใหม่ได้ในวิชานี้)
+        async function deleteExamResult(studentId, fullName) {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+            const projectName = document.getElementById('project-filter').value;
+
+            if (!confirm(`ยืนยันลบผลสอบของ "${fullName}" สำหรับวิชานี้?\n\n⚠️ คะแนนและคำตอบเดิมจะถูกลบทิ้งอย่างถาวร นักศึกษาจะสามารถเข้าสอบวิชานี้ใหม่ได้อีกครั้ง`)) return;
+
+            try {
+                const { data: deleteData, error } = await supabaseClient.from('exam_results')
+                    .delete()
+                    .eq('student_id', studentId)
+                    .eq('project_name', projectName)
+                    .select(); // ขอแถวที่ถูกลบกลับมา เพื่อเช็คว่าลบเข้า DB ได้จริงหรือไม่ (กัน RLS บล็อกแบบเงียบ)
+                if (error) throw error;
+
+                if (!deleteData || deleteData.length === 0) {
+                    throw new Error("ไม่มีสิทธิ์ลบข้อมูล (RLS) กรุณาตรวจสอบ Row Level Security Policy ของตาราง exam_results ใน Supabase ว่าอนุญาตให้ DELETE ด้วย anon key หรือไม่");
+                }
+
+                fetchExamResults(); // รีเฟรชตารางให้ตรงกับสถานะล่าสุด
+            } catch (err) {
+                alert("ลบผลสอบไม่สำเร็จ: " + err.message);
+            }
+        }
+
+        function calculateMetrics(data) {
+            const totalStudents = data.length;
+            const submittedData = data.filter(item => item.has_submitted);
+            const submittedCount = submittedData.length;
+
+            document.getElementById('stat-total').innerText = totalStudents;
+            document.getElementById('stat-submitted').innerText = `ส่งแล้ว ${submittedCount}`;
+
+            if (submittedCount === 0) {
+                document.getElementById('stat-avg').innerText = "0.00";
+                document.getElementById('stat-max').innerText = "0";
+                document.getElementById('stat-min').innerText = "0";
+                return;
+            }
+
+            const scores = submittedData.map(item => item.score);
+            document.getElementById('stat-avg').innerText = (scores.reduce((a, b) => a + b, 0) / submittedCount).toFixed(2);
+            document.getElementById('stat-max').innerText = Math.max(...scores);
+            const nonZero = scores.filter(s => s > 0);
+            document.getElementById('stat-min').innerText = nonZero.length > 0 ? Math.min(...nonZero) : 0;
+        }
+
+        function toggleRealtimeListener() {
+            if (!supabaseClient || !isConfigured) {
+                alert("กรุณาตั้งค่า API Keys ในโค้ดก่อนเปิดใช้งานระบบสตรีมมิ่งครับ");
+                document.getElementById('realtime-toggle').checked = false;
+                return;
+            }
+            const isChecked = document.getElementById('realtime-toggle').checked;
+            const badge = document.getElementById('realtime-badge');
+            const dot = document.getElementById('realtime-dot');
+
+            if (isChecked) {
+                badge.classList.replace('bg-gray-100', 'bg-green-50');
+                badge.classList.replace('text-gray-600', 'text-green-700');
+                dot.classList.replace('bg-gray-400', 'bg-green-500');
+                dot.classList.add('animate-ping');
+                badge.childNodes[2].nodeValue = " Realtime On";
+
+                realtimeChannel = supabaseClient.channel('schema-db-changes')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'exam_results' }, (payload) => {
+                        fetchExamResults(); 
+                    }).subscribe();
+            } else {
+                if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+                badge.classList.replace('bg-green-50', 'bg-gray-100');
+                badge.classList.replace('text-green-700', 'text-gray-600');
+                dot.classList.replace('bg-green-500', 'bg-gray-400');
+                dot.classList.remove('animate-ping');
+                badge.childNodes[2].nodeValue = " Realtime Off";
+            }
+        }
+
+        function exportToCSV() {
+            if (!isConfigured) return alert("กรุณาตั้งค่า API Keys ในโค้ดก่อนดาวน์โหลดข้อมูลครับ");
+            if (globalExamData.length === 0) return alert("ไม่มีข้อมูลสำหรับดาวน์โหลด");
+            let exportData = currentRoom !== "ALL" ? globalExamData.filter(item => item.room === currentRoom) : globalExamData;
+            const projectName = document.getElementById('project-filter').options[document.getElementById('project-filter').selectedIndex].text;
+            
+            let csvContent = `วิชา/โปรเจกต์:,${projectName}\nสถานะ,ห้อง,เลขที่,รหัสนักศึกษา,ชื่อ-นามสกุล,คะแนน,เวลาส่ง\n`;
+
+            exportData.forEach(row => {
+                const statusStr = row.has_submitted ? "ส่งแล้ว" : "ยังไม่สอบ";
+                const scoreStr = row.has_submitted ? row.score : "-";
+                csvContent += `${statusStr},${row.room},${row.class_number},${row.student_id},"${row.full_name}",${scoreStr},${row.timestamp}\n`;
+            });
+
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `คะแนน_${projectName}_ห้อง_${currentRoom}_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
