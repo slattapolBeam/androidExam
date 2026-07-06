@@ -435,6 +435,7 @@
                     activeSession.super_tokens = newTokens;
                     sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
                     document.getElementById('nav-super-token').innerText = newTokens;
+                    updateSuperTokenVisibility();
                 }).subscribe();
         }
 
@@ -447,6 +448,15 @@
                 .on('broadcast', { event: 'gacha_drop' }, (msg) => {
                     const payload = msg.payload || {};
                     if (payload.student_id !== activeSession.student_id) return; // ไม่ใช่ของเรา ข้ามไป
+
+                    // อัปเดตจำนวนเหรียญจาก payload ทันที (ไม่รอ postgres_changes) กัน popup ขึ้นแต่เหรียญไม่เข้าจริง
+                    const newTotal = (typeof payload.newTotal === 'number')
+                        ? payload.newTotal
+                        : (activeSession.super_tokens || 0) + (payload.amount || 1);
+                    activeSession.super_tokens = newTotal;
+                    sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
+                    document.getElementById('nav-super-token').innerText = newTotal;
+                    updateSuperTokenVisibility();
 
                     document.getElementById('gacha-amount').innerText = payload.amount || 1;
                     const modal = document.getElementById('gacha-modal');
@@ -506,7 +516,8 @@
                     activeSession.super_tokens--;
                     document.getElementById('nav-super-token').innerText = activeSession.super_tokens;
                     sessionStorage.setItem('activeExamSession', JSON.stringify(activeSession));
-                    
+                    updateSuperTokenVisibility();
+
                     if(supabaseClient) {
                         supabaseClient.from('students').update({ super_tokens: activeSession.super_tokens }).eq('student_id', activeSession.student_id).then();
                     }
@@ -521,13 +532,22 @@
             }
         }
 
-        // แทรกปุ่ม 🌟 อัตโนมัติคู่กับ 💡
+        // แทรกปุ่ม 🌟 อัตโนมัติคู่กับ 💡 (ปุ่มจะถูกซ่อนถ้ายังไม่มีเหรียญ ดู updateSuperTokenVisibility)
         function getExamTemplateWithTokens(templateHTML) {
-            return templateHTML.replace(/<button class="hint-btn" onclick="useHint\((\d+)\)">💡<\/button>/g, 
+            return templateHTML.replace(/<button class="hint-btn" onclick="useHint\((\d+)\)">💡<\/button>/g,
                 `<button class="hint-btn" onclick="useHint($1)" title="ดูคำใบ้ (จำกัด 3 ครั้ง)">💡</button>
                  <button class="hint-btn super-btn" onclick="useSuperToken($1)" title="ใช้ Super Token เติมคำตอบ">🌟</button>`);
         }
-      
+
+        // ซ่อนปุ่ม 🌟 เมื่อนักศึกษาไม่มี Super Token เหลือ, โชว์เฉพาะตอนมีเหรียญเท่านั้น
+        // เรียกทั้งตอน render ครั้งแรก, ตอนเหรียญเปลี่ยนแบบ real-time และหลังใช้เหรียญ
+        function updateSuperTokenVisibility() {
+            const hasTokens = (activeSession.super_tokens || 0) > 0;
+            document.querySelectorAll('.super-btn').forEach(btn => {
+                btn.style.display = hasTokens ? '' : 'none';
+            });
+        }
+
         function setupExam() {
             const projectData = allExamsDatabase[activeSession.project_name];
             const availableSets = Object.keys(projectData).filter(k => k.startsWith('set_')).sort();
@@ -536,9 +556,10 @@
 
             document.getElementById('greeting-title').innerText = `เตรียมตัวให้พร้อม, ${activeSession.full_name.split(' ')[1]}!`;
             document.getElementById('question-title').innerText = currentExamSet.title;
-            
+
             document.getElementById('code-container').innerHTML = getExamTemplateWithTokens(currentExamSet.codeTemplate);
             document.getElementById('exam-set-badge').innerText = `ชุดที่ ${setIndex + 1}`;
+            updateSuperTokenVisibility();
         }
 
         // โหมดทบทวน

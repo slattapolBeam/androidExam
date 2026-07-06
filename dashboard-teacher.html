@@ -133,6 +133,12 @@
                     </div>
                 </div>
 
+                <!-- ปุ่มรีเซ็ต Super Token เฉพาะห้องที่เลือกอยู่ในแท็บด้านบน (เลือก "ทั้งหมด" เพื่อรีเซ็ตทุกห้อง) -->
+                <button id="btn-reset-tokens" onclick="resetTokensForRoom()" title="รีเซ็ต Super Token ของนักศึกษาในห้องที่เลือกอยู่ให้เป็น 0" class="shrink-0 px-4 py-3 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 font-medium rounded-xl transition active:scale-95 flex flex-col items-center justify-center">
+                    <span class="text-xl mb-1">🔄</span>
+                    <span class="text-[10px] uppercase font-bold tracking-wider">รีเซ็ต Token</span>
+                </button>
+
                 <!-- สวิตช์ Realtime -->
                 <div class="flex items-center gap-3 shrink-0 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
                     <span class="text-sm font-medium text-gray-700">📡 สตรีมมิ่งสด:</span>
@@ -358,11 +364,11 @@
             }
         }
 
-        // ⏹️ ปิดห้องสอบ (ปิดรับคำตอบ) สำหรับวิชาที่เลือกอยู่ + รีเซ็ต Super Token ที่เหลือใช้ไม่หมดให้เป็น 0
+        // ⏹️ ปิดห้องสอบ (ปิดรับคำตอบ) สำหรับวิชาที่เลือกอยู่
         async function closeSession() {
             if (!supabaseClient || !isConfigured) return;
             const projectName = document.getElementById('project-filter').value;
-            if (!confirm("ยืนยันปิดห้องสอบวิชานี้?\nนักศึกษาจะเข้าสอบใหม่ไม่ได้ (เข้าได้แค่โหมดทบทวนเฉลยเท่านั้น)\n⚠️ Super Token ที่เหลืออยู่ของนักศึกษาทุกคนจะถูกรีเซ็ตเป็น 0")) return;
+            if (!confirm("ยืนยันปิดห้องสอบวิชานี้?\nนักศึกษาจะเข้าสอบใหม่ไม่ได้ (เข้าได้แค่โหมดทบทวนเฉลยเท่านั้น)")) return;
 
             try {
                 const { error } = await supabaseClient.from('exam_sessions')
@@ -371,17 +377,44 @@
                     .eq('is_active', true);
                 if (error) throw error;
 
-                // 🌟 รีเซ็ต Super Token ของนักศึกษาทุกคนที่ยังเหลือเหรียญไม่ได้ใช้ ให้เป็น 0
-                // (กฎ: เหรียญที่เก็บไว้แต่ไม่ใช้ จะหมดอายุทันทีที่ session การสอบนั้นจบลง)
-                const { error: resetErr } = await supabaseClient.from('students')
-                    .update({ super_tokens: 0 })
-                    .gt('super_tokens', 0);
-                if (resetErr) throw resetErr;
-
                 document.getElementById('active-pin-display').classList.add('hidden');
                 document.getElementById('btn-generate-pin').classList.remove('hidden');
             } catch (err) {
                 alert("ปิดห้องสอบไม่สำเร็จ: " + err.message);
+            }
+        }
+
+        // 🔄 รีเซ็ต Super Token ของนักศึกษาให้เป็น 0 เฉพาะห้องที่เลือกอยู่ในแท็บด้านบน (เลือก "ทั้งหมด" เพื่อรีเซ็ตทุกห้อง)
+        // แยกออกมาเป็นปุ่มกดเอง ไม่ผูกกับการปิดห้องสอบอีกต่อไป เพื่อให้อาจารย์เลือกเวลารีเซ็ตเองได้
+        async function resetTokensForRoom() {
+            if (!supabaseClient || !isConfigured) return alert("กรุณาเชื่อมต่อฐานข้อมูลก่อน");
+
+            const roomLabel = currentRoom === "ALL" ? "ทุกห้อง" : `ห้อง ${currentRoom}`;
+            if (!confirm(`⚠️ ยืนยันรีเซ็ต Super Token ของนักศึกษาใน${roomLabel}ให้เป็น 0?\nเหรียญที่เหลืออยู่ตอนนี้จะหายไปทันที และย้อนกลับไม่ได้`)) return;
+
+            const targetIds = (currentRoom === "ALL" ? globalExamData : globalExamData.filter(s => s.room === currentRoom))
+                .map(s => s.student_id);
+
+            if (targetIds.length === 0) return alert("ไม่พบนักศึกษาในห้องนี้ กรุณากด 🔄 รีเฟรชข้อมูลก่อน");
+
+            const btn = document.getElementById('btn-reset-tokens');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<span class="text-xl mb-1">⏳</span><span class="text-[10px] uppercase font-bold tracking-wider">กำลังรีเซ็ต</span>';
+            btn.disabled = true;
+
+            try {
+                const { error } = await supabaseClient.from('students')
+                    .update({ super_tokens: 0 })
+                    .in('student_id', targetIds)
+                    .gt('super_tokens', 0);
+                if (error) throw error;
+
+                alert(`✅ รีเซ็ต Super Token ของนักศึกษาใน${roomLabel}เรียบร้อยแล้ว`);
+            } catch (err) {
+                alert("รีเซ็ต Token ไม่สำเร็จ: " + err.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
             }
         }
 
@@ -479,10 +512,12 @@
                         if (!updateErr && updateData && updateData.length > 0) {
                             successCount++;
                             // 📡 ส่งสัญญาณ gacha ให้คนนี้โดยเฉพาะ เพื่อให้หน้าจอนักศึกษาโชว์ Mystery Drop
+                            // ส่ง newTotal (ค่าที่เขียนลง DB สำเร็จแล้วจริง ๆ) ไปด้วย เพื่อให้ฝั่ง นศ. อัปเดตจำนวนเหรียญทันทีจาก payload นี้เลย
+                            // ไม่ต้องรอ postgres_changes realtime (ซึ่งอาจไม่ทำงานถ้ายังไม่เปิด Replication ของตาราง students ใน Supabase)
                             gachaChannel.send({
                                 type: 'broadcast',
                                 event: 'gacha_drop',
-                                payload: { student_id: student.student_id, amount: 1 }
+                                payload: { student_id: student.student_id, amount: 1, newTotal: currentTokens }
                             });
                         } else {
                             blockedCount++;
