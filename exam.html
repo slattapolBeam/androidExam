@@ -138,6 +138,7 @@
         let currentExamSet = null; 
         
         // 📚 คลังข้อสอบ ExpenseNote 
+       // 📚 คลังข้อสอบชุดสมบูรณ์ (ซ่อมแซมจุดที่โค้ดขาด)
         const allExamsDatabase = {
             "ExpenseNote": {
                 set_1: {
@@ -258,26 +259,22 @@
     }`,
                     answers: ["R.layout", "Button", "var", "toString", "isEmpty", "null", "total", "else", "0.0", "text.clear"]
                 }
-            }
-            
-       ,"Calculator": {
-            set_1: {
-                title: "ชุดที่ 1: การประกาศตัวแปรและการผูกเลย์เอาต์ (Variables & View Binding)",
-                codeTemplate: `class MainActivity : AppCompatActivity() {
+            },
+            "Calculator": {
+                set_1: {
+                    title: "ชุดที่ 1: การประกาศตัวแปรและการผูกเลย์เอาต์ (Variables & View Binding)",
+                    codeTemplate: `class MainActivity : AppCompatActivity() {
 
-    // ประกาศประเภทตัวแปรให้เข้ากับวัตถุประสงค์การใช้งาน
-    private <input type="text" class="code-input" style="width: 80px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button> var display: TextView
-    private var current = ""
-    private var operator = ""
-    private var firstNumber = <input type="text" class="code-input" style="width: 50px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>
-    private var isNewOperation = true
+    private <input type="text" class="code-input" style="width: 80px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button> var display: <input type="text" class="code-input" style="width: 90px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>
+    private var current = <input type="text" class="code-input" style="width: 40px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button>
+    private var firstNumber = <input type="text" class="code-input" style="width: 50px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>
+    private var isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(<input type="text" class="code-input" style="width: 90px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button>.activity_main)
+        <input type="text" class="code-input" style="width: 130px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>(R.layout.activity_main)
 
-        // เชื่อมโยงไอดีของ TextView จาก Layout XML
-        display = <input type="text" class="code-input" style="width: 110px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>(R.id.txtDisplay)
+        display = <input type="text" class="code-input" style="width: 110px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>&lt;<input type="text" class="code-input" style="width: 80px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>&gt;(R.id.txtDisplay)
 
         val numberButtons = listOf(
             R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3,
@@ -285,92 +282,78 @@
         )
 
         for (id in numberButtons) {
-            findViewById&lt;Button&gt;(id).<input type="text" class="code-input" style="width: 150px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button> {
-                numberClicked((it as Button).text.toString())
+            findViewById&lt;Button&gt;(id).<input type="text" class="code-input" style="width: 150px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button> {
+                numberClicked((it as Button).<input type="text" class="code-input" style="width: 60px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>.toString())
             }
+        }
+    }
+}`,
+                    answers: ["lateinit", "TextView", '""', "0.0", "true", "setContentView", "findViewById", "TextView", "setOnClickListener", "text"]
+                },
+                set_2: {
+                    title: "ชุดที่ 2: โลจิกการรับเลขและการจัดการทศนิยม (String & Decimal Logic)",
+                    codeTemplate: `    private fun numberClicked(value: <input type="text" class="code-input" style="width: 70px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>) {
+        if (<input type="text" class="code-input" style="width: 130px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>) {
+            display.<input type="text" class="code-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> = ""
+            isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>
+        }
+        current <input type="text" class="code-input" style="width: 40px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button> value
+        display.text = <input type="text" class="code-input" style="width: 70px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>
+    }
+
+    private fun addDot() {
+        if (!current.<input type="text" class="code-input" style="width: 90px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>(".")) {
+            if (current.<input type="text" class="code-input" style="width: 90px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>()) current = "0"
+            current += <input type="text" class="code-input" style="width: 50px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+            display.<input type="text" class="code-input" style="width: 60px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button> = current
+        }
+    }`,
+                    answers: ["String", "isNewOperation", "text", "false", "+=", "current", "contains", "isEmpty", '"."', "text"]
+                },
+                set_3: {
+                    title: "ชุดที่ 3: การดักจับตัวดำเนินการและการเคลียร์ค่า (Operators & Clear System)",
+                    codeTemplate: `    private fun operatorClicked(op: <input type="text" class="code-input" style="width: 70px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>) {
+        if (current.<input type="text" class="code-input" style="width: 110px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>()) {
+            <input type="text" class="code-input" style="width: 100px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> = current.<input type="text" class="code-input" style="width: 90px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>()
+            <input type="text" class="code-input" style="width: 80px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button> = op
+            current = <input type="text" class="code-input" style="width: 40px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>
         }
     }
 
     private fun clearAll() {
-        current = ""
+        current = <input type="text" class="code-input" style="width: 40px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>
         operator = ""
-        firstNumber = 0.0
-        display.text = <input type="text" class="code-input" style="width: 40px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>
-        isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>
-    }
-}`,
-                answers: ["lateinit", "0.0", "R.layout", "findViewById", "setOnClickListener", '"0"', "true"]
-            },
-            set_2: {
-                title: "ชุดที่ 2: โลจิกการรับเลขและการจัดการทศนิยม (String & Decimal Logic)",
-                codeTemplate: `    private fun numberClicked(value: <input type="text" class="code-input" style="width: 70px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>) {
-        if (<input type="text" class="code-input" style="width: 130px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>) {
-            display.text = ""
-            isNewOperation = false
-        }
-        current <input type="text" class="code-input" style="width: 40px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> value
-        display.text = <input type="text" class="code-input" style="width: 70px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>
-    }
-
-    private fun addDot() {
-        // ตรวจสอบเพื่อป้องกันไม่ให้ใส่จุดทศนิยมซ้ำซ้อน
-        if (!current.<input type="text" class="code-input" style="width: 90px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>(".")) {
-            if (current.<input type="text" class="code-input" style="width: 90px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>()) current = "0"
-            current += <input type="text" class="code-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>
-            display.text = current
-        }
-    }
-
-    // เรียกใช้ใน onCreate
-    findViewById&lt;Button&gt;(R.id.btnDot).setOnClickListener { <input type="text" class="code-input" style="width: 90px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>() }`,
-                answers: ["String", "isNewOperation", "+=", "current", "contains", "isEmpty", '"."', "addDot"]
-            },
-            set_3: {
-                title: "ชุดที่ 3: การดักจับตัวดำเนินการทางคณิตศาสตร์ (Operators System)",
-                codeTemplate: `    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        findViewById&lt;Button&gt;(R.id.btnPlus).setOnClickListener { <input type="text" class="code-input" style="width: 140px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>("+") }
-        findViewById&lt;Button&gt;(R.id.btnMinus).setOnClickListener { operatorClicked(<input type="text" class="code-input" style="width: 50px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>) }
-        findViewById&lt;Button&gt;(R.id.btnMultiply).setOnClickListener { operatorClicked("*") }
-        findViewById&lt;Button&gt;(R.id.btnDivide).<input type="text" class="code-input" style="width: 150px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> { operatorClicked("/") }
-    }
-
-    private fun operatorClicked(op: String) {
-        if (current.<input type="text" class="code-input" style="width: 110px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>()) {
-            firstNumber = current.<input type="text" class="code-input" style="width: 100px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>()
-            operator = <input type="text" class="code-input" style="width: 40px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button>
-            current = <input type="text" class="code-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>
-        }
+        firstNumber = <input type="text" class="code-input" style="width: 50px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>
+        secondNumber = 0.0
+        result = 0.0
+        display.text = <input type="text" class="code-input" style="width: 40px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>
+        isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>
     }`,
-                answers: ["operatorClicked", '"-"', "setOnClickListener", "isNotEmpty", "toDouble", "op", '""']
-            },
-            set_4: {
-                title: "ชุดที่ 4: นิพจน์เงื่อนไขและการคำนวณผลลัพธ์ (When Expression & NaN Validation)",
-                codeTemplate: `    private fun calculateResult() {
-        if (current.isNotEmpty()) {
-            secondNumber = current.toDouble()
+                    answers: ["String", "isNotEmpty", "firstNumber", "toDouble", "operator", '""', '""', "0.0", '"0"', "true"]
+                },
+                set_4: {
+                    title: "ชุดที่ 4: นิพจน์เงื่อนไขและการคำนวณผลลัพธ์ (When Expression & Logic)",
+                    codeTemplate: `    private fun calculateResult() {
+        if (current.<input type="text" class="code-input" style="width: 100px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button>()) {
+            secondNumber = current.<input type="text" class="code-input" style="width: 90px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button>()
             
-            // เลือกใช้โครงสร้างการควบคุมแบบนิพจน์เพื่อหาผลลัพธ์
-            result = <input type="text" class="code-input" style="width: 60px;" id="q0"><button class="hint-btn" onclick="useHint(0)">💡</button> (operator) {
-                "+" -> firstNumber + secondNumber
+            result = <input type="text" class="code-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button> (<input type="text" class="code-input" style="width: 80px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>) {
+                "+" -> firstNumber <input type="text" class="code-input" style="width: 40px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button> secondNumber
                 "-" -> firstNumber - secondNumber
                 "*" -> firstNumber * secondNumber
-                "/" -> if (secondNumber <input type="text" class="code-input" style="width: 60px;" id="q1"><button class="hint-btn" onclick="useHint(1)">💡</button> 0.0) firstNumber / secondNumber else Double.<input type="text" class="code-input" style="width: 60px;" id="q2"><button class="hint-btn" onclick="useHint(2)">💡</button>
+                "/" -> if (secondNumber <input type="text" class="code-input" style="width: 40px;" id="q5"><button class="hint-btn" onclick="useHint(5)">💡</button> 0.0) firstNumber / secondNumber else Double.<input type="text" class="code-input" style="width: 50px;" id="q6"><button class="hint-btn" onclick="useHint(6)">💡</button>
                 else -> 0.0
             }
 
-            // ตรวจสอบว่าผลลัพธ์เป็นข้อผิดพลาดทางคณิตศาสตร์หรือไม่
-            display.text = if (result.<input type="text" class="code-input" style="width: 70px;" id="q3"><button class="hint-btn" onclick="useHint(3)">💡</button>()) "Error" else result.toString()
+            display.text = if (result.<input type="text" class="code-input" style="width: 70px;" id="q7"><button class="hint-btn" onclick="useHint(7)">💡</button>()) "Error" else result.<input type="text" class="code-input" style="width: 90px;" id="q8"><button class="hint-btn" onclick="useHint(8)">💡</button>()
             current = result.toString()
-            isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q4"><button class="hint-btn" onclick="useHint(4)">💡</button>
+            isNewOperation = <input type="text" class="code-input" style="width: 60px;" id="q9"><button class="hint-btn" onclick="useHint(9)">💡</button>
         }
     }`,
-                answers: ["when", "!=", "NaN", "isNaN", "true"]
+                    answers: ["isNotEmpty", "toDouble", "when", "operator", "+", "!=", "NaN", "isNaN", "toString", "true"]
+                }
             }
-        } };
-        
+        };
 
         window.onload = function() {
             // ระบบป้องกันการพัง กรณีลืมเปลี่ยน API Keys
